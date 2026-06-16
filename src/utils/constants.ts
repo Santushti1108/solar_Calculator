@@ -1,0 +1,123 @@
+import type { AnalysisState } from '../types/analysis';
+
+// export const PSH_DB: Record<string, number> = {
+//   Rajasthan: 6.0,
+//   Gujarat: 5.8,
+//   Maharashtra: 5.5,
+//   Karnataka: 5.3,
+//   'Tamil Nadu': 5.4,
+//   Delhi: 5.2,
+//   'West Bengal': 4.8,
+//   Kerala: 4.6,
+//   Other: 5.0,
+// };
+
+export const EUI_DB: Record<string, number> = {
+  Residential: 75,
+  Commercial: 120,
+  Industrial: 200,
+  Hospital: 300,
+  School: 80,
+  Hotel: 180,
+  Retail: 220,
+};
+
+export const STEP_LABELS = [
+  'Inputs',
+  'Load',
+  'Solar',
+  'Roof',
+  'BESS',
+  'CAPEX',
+  'Finance',
+  'Env',
+  'Compare',
+  'Dashboard',
+];
+
+export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const MONTHLY_FACTORS = [1.0, 1.05, 1.1, 1.12, 1.08, 0.95, 0.85, 0.87, 0.9, 1.0, 1.02, 0.98];
+
+export const COLORS = {
+  blue: '#00BFFF',
+  orange: '#FFA500',
+  green: '#22C55E',
+  purple: '#A855F7',
+  red: '#EF4444',
+  gray: '#64748B',
+  teal: '#14B8A6',
+  yellow: '#EAB308',
+};
+
+export const initialState: AnalysisState = {
+  step: 0,
+  totalSteps: 10,
+  mode: 'on-grid',
+  loadMethod: 'auto',
+  showWizard: false,
+  appliances: [
+    
+    { id: crypto.randomUUID(),name: 'AC (1.5T)', qty: 5, w: 1500, hrs: 8,priority:'critical', },
+    { id: crypto.randomUUID(),name: 'Lighting LED', qty: 100, w: 10, hrs: 10,priority:'critical', },
+    {id: crypto.randomUUID(), name: 'Computers', qty: 30, w: 120, hrs: 9,priority:'critical', },
+    { id: crypto.randomUUID(),name: 'Elevator', qty: 1, w: 7500, hrs: 4 ,priority:'critical',},
+  ],
+  inputs: {
+    projectName: 'My Solar Project',
+    location: '',
+    latitude: 28.6139,
+    longitude: 77.2090,
+    psh: 5.5,
+    averageTemperature: 25,
+    currency: 'INR',
+    tariff: 8.5,
+    gridAvailability: 90,
+    tariffEscalation: 5,
+    discountRate: 10,
+    projectLife: 25,
+    buildingCategory: 'Commercial',
+    eui: 120,
+    area: 1000,
+    occupancyDays: 300,
+    billAmount: 25000,
+    billKwh: 3000,
+    directDailyKwh: 100,
+    directPeakKw: 20,
+    lossFactor: 18,
+    panelWp: 540,
+    panelArea: 2.7,
+    degradation: 0.5,
+    roofArea: 500,
+    designLoadOverride: 0,
+    selfConsumption: 80,
+    roofAvailable: 500,
+    roofUsablePct: 70,
+    roofTilt: 15,
+    roofType: 'Flat',
+    dod: 80,
+    rte: 92,
+    chemistry: 'LFP',
+    backupHours: 4,
+    autonomyDays: 1,
+    peakShaveTarget: 15,
+    dailyCycles: 1,
+    bessCostKwh: 18000,
+    panelCost: 28,
+    inverterCost: 8000,
+    mountingCost: 8,
+    bosCost: 6,
+    installCost: 5,
+    monitoringCost: 50000,
+    engineeringPct: 3,
+    contingencyPct: 5,
+    gst: 12,
+    subsidy: 0,
+    omPct: 1.2,
+    insurancePct: 0.3,
+    exportRate: 4,
+    exportPct: 20,
+    dgCost: 20,
+    inflation: 6,
+    batteryCoverage :"critical"
+  },
+};
