@@ -14,7 +14,7 @@ export function ComparisonStep() {
       <div className="panel-title">
         Scenario Comparison <span>Step 9</span>
       </div>
-      <div className="panel-sub">On-Grid vs Hybrid vs Off-Grid - algorithm decision D7 loop</div>
+      <div className="panel-sub"></div>
       <Card title="⚡ Three-Scenario Comparison">
         <div className="compare-grid">
           {results.scenarios.map((scenario, index) => (

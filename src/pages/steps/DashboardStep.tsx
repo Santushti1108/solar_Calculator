@@ -15,7 +15,7 @@ export function DashboardStep() {
       <div className="panel-title">
         Results Dashboard <span>Step 10</span>
       </div>
-      <div className="panel-sub">Executive KPI summary, generation forecast, and export</div>
+      <div className="panel-sub"></div>
       <div className="kpi-grid">
         <KpiCard value={fmt(results.solar.kwp, 1)} unit="kWp" label="Solar Size" />
         <KpiCard value={fmt(results.solar.panels)} unit="panels" label="Panel Count" />

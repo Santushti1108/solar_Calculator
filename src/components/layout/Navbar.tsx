@@ -16,7 +16,7 @@ export function Navbar() {
           />
           <circle cx="14" cy="14" r="3" fill="#00BFFF" />
         </svg>
-        SolarBESS Pro
+        SolarBESS 
       </div>
       <button className="nav-btn" type="button" onClick={goHome}>
         ← Home

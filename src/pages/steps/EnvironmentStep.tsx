@@ -14,7 +14,7 @@ export function EnvironmentStep() {
       <div className="panel-title">
         Environmental Impact <span>Step 8</span>
       </div>
-      <div className="panel-sub">CO₂ offset using India CEA grid emission factor 2023: 0.82 kgCO₂/kWh</div>
+      <div className="panel-sub"></div>
       <Card title="🌿 Environmental Benefits">
         <div className="env-grid">
           <div className="env-item">

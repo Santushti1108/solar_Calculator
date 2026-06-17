@@ -19,7 +19,7 @@ export function FinanceStep() {
       <div className="panel-title">
         Financial Analysis <span>Step 7</span>
       </div>
-      <div className="panel-sub">Algorithm sections A13-A14 + Section G: 25-year cash flow and all financial KPIs</div>
+      <div className="panel-sub"></div>
       <Card title="📈 Financial Parameters">
         <div className="form-grid">
           <FormField label="Export Tariff / Rate (₹/kWh)" type="number" value={inputs.exportRate} step="0.1" onChange={(value) => updateInput('exportRate', Number(value))} />
