@@ -22,9 +22,16 @@ export function LoadEstimationStep() {
       <div className="panel-title">
         Load Estimation <span>Step 2</span>
       </div>
-      {/* <div className="panel-sub">Choose your load input method</div> */}
-      <Card title="🏢 Building Category">
-        <div className="form-grid">
+      <Card title="📊 Select a load input method">
+        <div className="button-row">
+          {methodLabels.map((method) => (
+            <button className={`btn-nav ${state.loadMethod === method.id ? 'next' : 'back'} small-btn`} type="button" key={method.id} onClick={() => setLoadMethod(method.id)}>
+              {method.label}
+            </button>
+          ))}
+        </div>
+        {state.loadMethod === 'auto'  && (
+          <div className="form-grid">
           <FormField
             label="Building Type"
             value={inputs.buildingCategory}
@@ -40,21 +47,33 @@ export function LoadEstimationStep() {
               { value: 'Retail', label: 'Retail/Mall' },
             ]}
           />
-          
-          <FormField label="Energy Use Intensity Benchmark(kWh/m²/yr)" type="number" value={inputs.eui} step="5" onChange={(value) => updateInput('eui', Number(value))} />
-          <FormField label="Built-up Area (m²)" type="number" value={inputs.area} step="50" onChange={(value) => updateInput('area', Number(value))} />
-          <FormField label="Occupancy Days/Year" type="number" value={inputs.occupancyDays} onChange={(value) =>{const days = Math.min(Math.max(Number(value),1),360);updateInput('occupancyDays', days)}}  />
-        </div>
-      </Card>
-      <Card title="📊 Select a load input method">
-        <div className="button-row">
-          {methodLabels.map((method) => (
-            <button className={`btn-nav ${state.loadMethod === method.id ? 'next' : 'back'} small-btn`} type="button" key={method.id} onClick={() => setLoadMethod(method.id)}>
-              {method.label}
-            </button>
-          ))}
-        </div>
-        {state.loadMethod === 'auto'  && null}
+          <FormField
+              label="Energy Use Intensity Benchmark(kWh/m²/yr)"
+              type="number"
+              value={inputs.eui}
+              step="5"
+              onChange={(value) => updateInput('eui', Number(value))}
+            />
+             <FormField
+                label="Built-up Area (m²)"
+                type="number"
+                value={inputs.area}
+                step="50"
+                onChange={(value) => updateInput('area', Number(value))}
+              />
+
+              <FormField
+                label="Occupancy Days / Year"
+                type="number"
+                value={inputs.occupancyDays}
+                onChange={(value) => {
+                  const days = Math.min(Math.max(Number(value), 1), 360);
+                  updateInput('occupancyDays', days);
+                }}
+              />
+            </div>
+
+        ) }
         {state.loadMethod === 'appliance' ? <ApplianceEditor /> : null}
         {state.loadMethod === 'bill' ? (
           <div className="form-grid">
@@ -69,6 +88,7 @@ export function LoadEstimationStep() {
           </div>
         ) : null} */}
       </Card>
+      {results.load.daily_kwh > 0 &&(
       <Card title="✅ Computed Load Summary">
         <div className="kpi-grid">
           <KpiCard value={fmt(results.load.daily_kwh, 1)} unit="kWh/day" label="Daily Load" />
@@ -78,6 +98,7 @@ export function LoadEstimationStep() {
               <KpiCard value={fmt(results.load.non_critical_peak_kw,1)} unit ="kw" label="Non-Critical Peak"/>
         </div>
       </Card>
+      )}
     </div>
   );
 }
