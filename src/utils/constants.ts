@@ -16,6 +16,7 @@ export const EUI_DB: Record<string, number> = {
   Residential: 75,
   Commercial: 120,
   Industrial: 200,
+  Institutional: 110,
   Hospital: 300,
   School: 80,
   Hotel: 180,
@@ -57,10 +58,20 @@ export const initialState: AnalysisState = {
   showWizard: false,
   appliances: [
     
-    { id: crypto.randomUUID(),name: 'AC (1.5T)', qty: 5, w: 1500, hrs: 8,priority:'critical', },
-    { id: crypto.randomUUID(),name: 'Lighting LED', qty: 100, w: 10, hrs: 10,priority:'critical', },
-    {id: crypto.randomUUID(), name: 'Computers', qty: 30, w: 120, hrs: 9,priority:'critical', },
-    { id: crypto.randomUUID(),name: 'Elevator', qty: 1, w: 7500, hrs: 4 ,priority:'critical',},
+    { id: crypto.randomUUID(),name: 'Lighting-corridors-LED', qty: 10, w: 20, hrs: 12,priority:'critical',},
+    { id: crypto.randomUUID(),name: 'Lighting-Indoors-LED', qty: 15, w: 20, hrs: 12,priority:'critical', },
+    {id: crypto.randomUUID(), name: 'Lightings-Outdoor-LED', qty: 2, w: 150, hrs: 8,priority:'critical', },
+    {id: crypto.randomUUID(), name: 'Ceiling Fan', qty:10, w: 50, hrs: 24,priority:'critical', },
+    {id: crypto.randomUUID(), name: 'Drinking Water Purifier', qty: 1, w: 50, hrs: 12,priority:'critical', },
+    {id: crypto.randomUUID(), name: 'submersible water pump', qty: 1, w: 1500, hrs: 2,priority:'critical', },
+    {id: crypto.randomUUID(), name: 'Electronics gadget charging points', qty: 5, w: 30, hrs: 24,priority:'critical', },
+    {id: crypto.randomUUID(), name: 'Refrigerators(emergency medicines)(190 Ltr.)', qty: 1, w: 230, hrs: 12,priority:'critical', },
+    {id: crypto.randomUUID(), name: 'Fire alarm', qty: 1, w: 150, hrs: 24,priority:'critical', },
+    {id: crypto.randomUUID(), name: 'wall mounted fans', qty: 1, w: 50, hrs: 24,priority:'non_critical', },
+    {id: crypto.randomUUID(), name: 'Pedestal fans', qty: 5, w: 50, hrs: 24,priority:'non_critical', },
+    {id: crypto.randomUUID(),name: 'Cooking Facility(Electric)', qty: 2, w: 1500, hrs: 2 ,priority:'non_critical',},
+    {id: crypto.randomUUID(),name: 'Coolers', qty: 1, w: 200, hrs: 8 ,priority:'non_critical',},
+    {id: crypto.randomUUID(),name: 'sat. phones(charging)', qty: 1, w: 50, hrs: 12 ,priority:'non_critical',},
   ],
   inputs: {
     projectName: 'My Solar Project',
@@ -118,6 +129,7 @@ export const initialState: AnalysisState = {
     exportPct: 20,
     dgCost: 20,
     inflation: 6,
-    batteryCoverage :"critical"
+    batteryCoverage :"critical",
+    
   },
 };

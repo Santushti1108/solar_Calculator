@@ -1,41 +1,93 @@
 import { useAnalysis } from '../context/AnalysisContext';
 
+
+const features = [
+  {
+    icon: '☀',
+    label: 'Solar PV system sizing and generation analysis',
+  },
+  {
+    icon: '🔋',
+    label: 'Battery Energy Storage System (BESS) sizing',
+  },
+  {
+    icon: '📊',
+    label: 'Financial analysis including NPV, IRR, ROI and Payback',
+  },
+  {
+    icon: '🌱',
+    label: 'Environmental impact and CO₂ reduction assessment',
+  },
+  {
+    icon: '⚡',
+    label: 'Scenario comparison: On-Grid, Hybrid and Off-Grid',
+  },
+];
+
+const stats = [
+  {
+    icon: '🧭',
+    value: '10-Step',
+    label: 'Guided Wizard',
+  },
+  {
+    icon: '↗️',
+    value: '8 KPIs',
+    label: 'Financial Metrics',
+  },
+  {
+    icon: '⚙️',
+    value: '3 Modes',
+    label: 'On/Hybrid/Off-Grid',
+  },
+  {
+    icon: '📈',
+    value: '25-Year',
+    label: 'Cash Flow Model',
+  },
+];
+
 export function HeroPage() {
   const { startWizard } = useAnalysis();
 
   return (
     <div id="hero-section">
       <section id="hero">
-        <div className="hero-badge">⚡ Industrial-Grade Energy Analysis</div>
-        <h1 className="hero-title">
-          Solar PV + BESS Sizing &<br />
-          Financial Analysis Platform
-        </h1>
-        <p className="hero-sub">
-          Design, optimize and analyze renewable energy systems with advanced financial modelling. On-Grid, Hybrid, and Off-Grid scenarios.
-        </p>
-        <div className="hero-btns">
-          <button className="btn-primary" type="button" onClick={startWizard}>
-            ⚡ Start Analysis
-          </button>
+        <div className="hero-container">
+          <div className="hero-left">
+            <h1 className="hero-title">
+              Solar PV + BESS Sizing &
+              <br />
+              Financial Analysis Platform
+            </h1>
+
+            <div className="hero-btns">
+              <button className="btn-primary" type="button" onClick={startWizard}>
+                ⚡ Start Analysis
+              </button>
+            </div>
+
+            <div className="hero-features">
+              {features.map((feature) => (
+                <div className="feature-item" key={feature.label}>
+                  <div className="feature-icon">{feature.icon}</div>
+                  <span>{feature.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
+
         <div className="hero-stats">
-          <div className="stat-card">
-            <div className="stat-val">10-Step</div>
-            <div className="stat-lbl">Guided Wizard</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-val">8 KPIs</div>
-            <div className="stat-lbl">Financial Metrics</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-val">3 Modes</div>
-            <div className="stat-lbl">On/Hybrid/Off-Grid</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-val">25-Year</div>
-            <div className="stat-lbl">Cash Flow Model</div>
-          </div>
+          {stats.map((stat) => (
+            <div className="stat-card" key={stat.label}>
+              <div className="stat-icon">{stat.icon}</div>
+              <div>
+                <div className="stat-val">{stat.value}</div>
+                <div className="stat-lbl">{stat.label}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>

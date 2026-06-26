@@ -10,7 +10,7 @@ const methodLabels: Array<{ id: LoadMethod; label: string }> = [
   { id: 'auto', label: 'Area Based' },
   { id: 'appliance', label: 'Appliance Sum' },
   { id: 'bill', label: 'Bill-Based' },
-  { id: 'direct', label: 'Direct Entry' },
+  // { id: 'direct', label: 'Direct Entry' },
 ];
 
 export function LoadEstimationStep() {
@@ -32,6 +32,7 @@ export function LoadEstimationStep() {
             options={[
               { value: 'Residential', label: 'Residential' },
               { value: 'Commercial', label: 'Commercial Office' },
+              {value: 'Institutional', label: 'Institutional'},
               { value: 'Industrial', label: 'Industrial' },
               { value: 'Hospital', label: 'Hospital' },
               { value: 'School', label: 'School/College' },
@@ -40,22 +41,12 @@ export function LoadEstimationStep() {
             ]}
           />
           
-          <FormField label="Energy Use Intensity Benchmark (kWh/m²/yr)" type="number" value={inputs.eui} step="5" onChange={(value) => updateInput('eui', Number(value))} />
+          <FormField label="Energy Use Intensity Benchmark(kWh/m²/yr)" type="number" value={inputs.eui} step="5" onChange={(value) => updateInput('eui', Number(value))} />
           <FormField label="Built-up Area (m²)" type="number" value={inputs.area} step="50" onChange={(value) => updateInput('area', Number(value))} />
-          <FormField label="Occupancy Days/Year" type="number" value={inputs.occupancyDays} min="1" max="365" onChange={(value) => updateInput('occupancyDays', Number(value))} />
+          <FormField label="Occupancy Days/Year" type="number" value={inputs.occupancyDays} onChange={(value) =>{const days = Math.min(Math.max(Number(value),1),360);updateInput('occupancyDays', days)}}  />
         </div>
       </Card>
       <Card title="📊 Select a load input method">
-        {/* <div
-  style={{
-    color: "red",
-    fontWeight: "bold",
-    marginBottom: "10px",
-  }}
->
-  Current Method:
-  {state.loadMethod}
-</div> */}
         <div className="button-row">
           {methodLabels.map((method) => (
             <button className={`btn-nav ${state.loadMethod === method.id ? 'next' : 'back'} small-btn`} type="button" key={method.id} onClick={() => setLoadMethod(method.id)}>
@@ -71,12 +62,12 @@ export function LoadEstimationStep() {
             <FormField label="Avg Monthly Units (kWh)" type="number" value={inputs.billKwh} onChange={(value) => updateInput('billKwh', Number(value))} />
           </div>
         ) : null}
-        {state.loadMethod === 'direct' ? (
+        {/* {state.loadMethod === 'direct' ? (
           <div className="form-grid">
             <FormField label="Daily Load (kWh/day)" type="number" value={inputs.directDailyKwh} step="5" onChange={(value) => updateInput('directDailyKwh', Number(value))} />
             <FormField label="Peak Load (kW)" type="number" value={inputs.directPeakKw} step="1" onChange={(value) => updateInput('directPeakKw', Number(value))} />
           </div>
-        ) : null}
+        ) : null} */}
       </Card>
       <Card title="✅ Computed Load Summary">
         <div className="kpi-grid">
