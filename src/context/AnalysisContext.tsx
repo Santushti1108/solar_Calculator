@@ -1,9 +1,9 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import type { AnalysisState, Appliance, Inputs, LoadMethod, SystemMode } from '../types/analysis';
-import { EUI_DB, initialState } from '../utils/constants';
+import { BATTERY_COST_DB, EUI_DB, AREA_DB, initialState } from '../utils/constants';
 import { useAnalysisCalculations } from '../hooks/useAnalysisCalculations';
-import { ApplianceEditor } from '../components/wizard/ApplianceEditor';
-import { UpdateModeEnum } from 'chart.js';
+// import { ApplianceEditor } from '../components/wizard/ApplianceEditor';
+// import { UpdateModeEnum } from 'chart.js';
 
 interface AnalysisContextValue {
   state: AnalysisState;
@@ -44,12 +44,22 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
         setState((current) => ({ ...current, step: Math.max(0, current.step - 1) }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
-      setMode: (mode) => setState((current) => ({ ...current, mode })),
+      setMode: (mode) => setState((current) => ({ ...current, inputs: { ...current.inputs, systemMode: mode } })),
       setLoadMethod: (loadMethod) => setState((current) => ({ ...current, loadMethod })),
       updateInput: (key, value) =>
         setState((current) => {
           const nextInputs = { ...current.inputs, [key]: value };
-          if (key === 'buildingCategory') nextInputs.eui = EUI_DB[String(value)] || 120;
+          if (key === 'buildingCategory') {
+            nextInputs.eui = EUI_DB[String(value)];
+            nextInputs.area = AREA_DB[String(value)];
+          }
+          if (key === 'chemistry') {
+            nextInputs.bessCostKwh = BATTERY_COST_DB[value as Inputs['chemistry']];
+            nextInputs.batteryCost = BATTERY_COST_DB[value as Inputs['chemistry']];
+          }
+          if (key === 'tariff') nextInputs.gridImportTariff = Number(value) || current.inputs.gridImportTariff;
+          if (key === 'gridImportTariff') nextInputs.tariff = Number(value) || current.inputs.tariff;
+          if (key === 'gridExportTariff') nextInputs.exportRate = Number(value) || current.inputs.exportRate;
           if (key === 'roofArea') nextInputs.roofAvailable = Number(value) || current.inputs.roofAvailable;
           return { ...current, inputs: nextInputs };
         }),

@@ -1,47 +1,46 @@
 import { useAnalysis } from '../context/AnalysisContext';
 
-
 const features = [
   {
-    icon: '☀',
+    icon: 'PV',
     label: 'Solar PV system sizing and generation analysis',
   },
   {
-    icon: '🔋',
+    icon: 'B',
     label: 'Battery Energy Storage System (BESS) sizing',
   },
   {
-    icon: '📊',
+    icon: 'F',
     label: 'Financial analysis including NPV, IRR, ROI and Payback',
   },
   {
-    icon: '🌱',
-    label: 'Environmental impact and CO₂ reduction assessment',
+    icon: 'CO2',
+    label: 'Environmental impact and CO2 reduction assessment',
   },
   {
-    icon: '⚡',
-    label: 'Scenario comparison: On-Grid, Hybrid and Off-Grid',
+    icon: 'M',
+    label: 'Scenario comparison across RTS, Grid, BESS and EV modes',
   },
 ];
 
 const stats = [
   {
-    icon: '🧭',
+    icon: 'W',
     value: '10-Step',
     label: 'Guided Wizard',
   },
   {
-    icon: '↗️',
+    icon: 'K',
     value: '8 KPIs',
     label: 'Financial Metrics',
   },
   {
-    icon: '⚙️',
-    value: '3 Modes',
-    label: 'On/Hybrid/Off-Grid',
+    icon: 'M',
+    value: '6 Modes',
+    label: 'RTS, Grid, BESS and EV',
   },
   {
-    icon: '📈',
+    icon: 'Y',
     value: '25-Year',
     label: 'Cash Flow Model',
   },
@@ -63,7 +62,7 @@ export function HeroPage() {
 
             <div className="hero-btns">
               <button className="btn-primary" type="button" onClick={startWizard}>
-                ⚡ Start Analysis
+                Start Analysis
               </button>
             </div>
 

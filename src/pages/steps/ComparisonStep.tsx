@@ -12,7 +12,7 @@ export function ComparisonStep() {
   return (
     <div className="step-panel visible">
       <div className="panel-title">
-        Scenario Comparison <span>Step 9</span>
+        Scenario Comparison <span>Step 8</span>
       </div>
       <div className="panel-sub"></div>
       <Card title="⚡ Three-Scenario Comparison">

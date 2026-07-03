@@ -1,85 +1,184 @@
-import { PieChart } from '../../components/charts/PieChart';
 import { Card } from '../../components/common/Card';
 import { FormField } from '../../components/common/FormField';
+import { KpiCard } from '../../components/common/KpiCard';
 import { ResultRow } from '../../components/common/ResultRow';
 import { useAnalysis } from '../../context/AnalysisContext';
-import { COLORS } from '../../utils/constants';
+import { isEvMode } from '../../utils/calculations';
 import { fmt, fmtC } from '../../utils/format';
 
 export function CapexStep() {
   const { state, results, updateInput } = useAnalysis();
   const { inputs } = state;
-  const labels = Object.keys(results.capex.components).filter((key) => results.capex.components[key] > 0);
-  const values = labels.map((key) => Math.round(results.capex.components[key]));
-  const pieColors = [COLORS.blue, COLORS.orange, COLORS.green, COLORS.purple, COLORS.teal, COLORS.yellow, '#F43F5E', '#A8A29E', '#6366F1', '#22D3EE'];
+  const includeEvCost = isEvMode(inputs.systemMode) && inputs.evCostOption === 'included';
+  const showFinancing = inputs.externalFinancing === 'yes';
+  const comparisonSubsidy = results.solar.kwp <= 1 ? 30000 : results.solar.kwp <= 2 ? 60000 : 78000;
+  const comparisonCapexWithoutSubsidy = results.capex.capex_without_subsidy;
+  const comparisonCapexWithSubsidy = Math.max(comparisonCapexWithoutSubsidy - comparisonSubsidy, 0);
+  const comparisonLoanPct = inputs.externalFinancing === 'yes' ? inputs.loanPct / 100 : 0;
+  const comparisonLoanWithSubsidy = comparisonCapexWithSubsidy * comparisonLoanPct;
+  const comparisonLoanWithoutSubsidy = comparisonCapexWithoutSubsidy * comparisonLoanPct;
+  const comparisonEquityWithSubsidy = comparisonCapexWithSubsidy - comparisonLoanWithSubsidy;
+  const comparisonEquityWithoutSubsidy = comparisonCapexWithoutSubsidy - comparisonLoanWithoutSubsidy;
+  const comparisonEmiWithSubsidy = computeComparisonEmi(comparisonLoanWithSubsidy, inputs.interestRate, inputs.tenure);
+  const comparisonEmiWithoutSubsidy = computeComparisonEmi(comparisonLoanWithoutSubsidy, inputs.interestRate, inputs.tenure);
 
   return (
     <div className="step-panel visible">
       <div className="panel-title">
-        CAPEX Analysis <span>Step 6</span>
+        CAPEX Analysis <span>Step 5</span>
       </div>
       <div className="panel-sub"></div>
-      <Card title="💰 Cost Parameters">
-        <div className="form-grid">
-          <FormField label="Solar Panel Cost (₹/Wp)" type="number" value={inputs.panelCost} step="1" onChange={(value) => updateInput('panelCost', Number(value))} />
-          <FormField label="Inverter Cost (₹/kW)" type="number" value={inputs.inverterCost} step="500" onChange={(value) => updateInput('inverterCost', Number(value))} />
-          <FormField label="Mounting Structure (₹/Wp)" type="number" value={inputs.mountingCost} step="0.5" onChange={(value) => updateInput('mountingCost', Number(value))} />
-          <FormField label="BoS / Wiring (₹/Wp)" type="number" value={inputs.bosCost} step="0.5" onChange={(value) => updateInput('bosCost', Number(value))} />
-          <FormField label="Installation Labour (₹/Wp)" type="number" value={inputs.installCost} step="0.5" onChange={(value) => updateInput('installCost', Number(value))} />
-          <FormField label="Monitoring / SCADA (₹ flat)" type="number" value={inputs.monitoringCost} step="5000" onChange={(value) => updateInput('monitoringCost', Number(value))} />
-          <FormField label="Engineering Fee (%)" type="number" value={inputs.engineeringPct} step="0.5" onChange={(value) => updateInput('engineeringPct', Number(value))} />
-          <FormField label="Contingency (%)" type="number" value={inputs.contingencyPct} step="0.5" onChange={(value) => updateInput('contingencyPct', Number(value))} />
-          <FormField label="GST Rate (% - 0 if exempt)" type="number" value={inputs.gst} step="1" onChange={(value) => updateInput('gst', Number(value))} />
-          <FormField label="Subsidy (₹ lump sum)" type="number" value={inputs.subsidy} step="10000" onChange={(value) => updateInput('subsidy', Number(value))} />
+
+      <Card title="RE System Parameters">
+        <div className="grid-summary">
+          <div className="summary-left">
+            <div className="summary-title">RE System Parameters</div>
+          </div>
+          <div className="summary-right">
+            <div className="summary-pill">
+              <span>Solar CUF</span>
+              <strong>{fmt(inputs.solarCuf, 1)}%</strong>
+            </div>
+            <div className="summary-pill">
+              <span>Solar Capacity</span>
+              <strong>{fmt(results.solar.kwp, 1)} kWp</strong>
+            </div>
+            <div className="summary-pill">
+              <span>BESS Capacity</span>
+              <strong>{fmt(results.bess.kwh, 1)} kWh</strong>
+            </div>
+            <div className="summary-pill">
+              <span>Inverter Capacity</span>
+              <strong>{fmt(results.solar.inverter_kw, 1)} kW</strong>
+            </div>
+            {/* <div className="summary-pill">
+              <span>Solar PV Unit Cost</span>
+              <strong>{fmtC(inputs.panelCost, inputs.currency)}/kWp</strong>
+            </div>
+            <div className="summary-pill">
+              <span>BESS Unit Cost</span>
+              <strong>{fmtC(inputs.bessCostKwh, inputs.currency)}/kWh</strong>
+            </div>
+            <div className="summary-pill">
+              <span>Inverter Unit Cost</span>
+              <strong>{fmtC(inputs.inverterCost, inputs.currency)}/kW</strong>
+            </div> */}
+            <div className="summary-pill">
+              <span>Installation & Net Metering</span>
+              <strong>{fmt(inputs.installCost, 0)}%</strong>
+            </div>
+            <div className="summary-pill">
+              <span>Project Life</span>
+              <strong>{fmt(inputs.projectLife)} yrs</strong>
+            </div>
+            <div className="summary-pill">
+              <span>System O&M</span>
+              <strong>{fmt(inputs.omPct, 1)}%</strong>
+            </div>
+            <div className="summary-pill">
+              <span>O&M Escalation Rate</span>
+              <strong>{fmt(inputs.omEscalationRate, 0)}%</strong>
+            </div>
+          </div>
         </div>
       </Card>
-      <Card title="📋 CAPEX Breakdown">
+
+      <Card title="User Inputs">
+        <div className="form-grid">
+          <FormField label="Solar PV Unit Cost (Rs./kWp)" type="number" value={inputs.panelCost} step="1000" onChange={(value) => updateInput('panelCost', Number(value))} />
+          <FormField label="BESS Unit Cost (Rs./kWh)" type="number" value={inputs.bessCostKwh} step="1000" onChange={(value) => updateInput('bessCostKwh', Number(value))} />
+          <FormField label="Inverter Unit Cost (Rs./kW)" type="number" value={inputs.inverterCost} step="500" onChange={(value) => updateInput('inverterCost', Number(value))} />
+          <FormField label="Include Government Subsidy?" value={inputs.governmentSubsidy} onChange={(value) => updateInput('governmentSubsidy', value as 'yes' | 'no')} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }]} />
+          <FormField label="External Financing?" value={inputs.externalFinancing} onChange={(value) => updateInput('externalFinancing', value as 'yes' | 'no')} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }]} />
+          {showFinancing ? (
+            <>
+              <FormField label="Loan % of Total CAPEX" type="number" value={inputs.loanPct} min="0" max="100" onChange={(value) => updateInput('loanPct', Number(value))} />
+              <FormField label="Loan Interest Rate (%)" type="number" value={inputs.interestRate} step="0.1" onChange={(value) => updateInput('interestRate', Number(value))} />
+              <FormField label="Loan Tenure (years)" type="number" value={inputs.tenure} min="1" max="30" onChange={(value) => updateInput('tenure', Number(value))} />
+              <div className="alert alert-info">
+                Repayment Type: <strong>EMI</strong>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </Card>
+
+      {includeEvCost ? (
+        <Card title="EV Cost">
+          <div className="form-grid">
+            <FormField label="EV Purchase Cost (Rs.)" type="number" value={inputs.evPurchaseCost} step="10000" onChange={(value) => updateInput('evPurchaseCost', Number(value))} />
+            <FormField label="Charging Infrastructure (Rs.)" type="number" value={inputs.chargingInfraCost} step="10000" onChange={(value) => updateInput('chargingInfraCost', Number(value))} />
+          </div>
+        </Card>
+      ) : null}
+
+      <Card title="CAPEX Summary">
+        <div className="kpi-grid">
+          <KpiCard value={fmtC(results.capex.solar_capex, inputs.currency)} label="Solar CAPEX" />
+          <KpiCard value={fmtC(results.capex.battery_capex, inputs.currency)} label="BESS CAPEX" tone="orange" />
+          <KpiCard value={fmtC(results.capex.inverter_capex, inputs.currency)} label="Inverter CAPEX" tone="green" />
+          <KpiCard value={fmtC(results.capex.installation, inputs.currency)} label="Installation & Net Metering" />
+        </div>
+        <div className="summary-block detail-block">
+          <ResultRow label="Solar CAPEX" value={fmtC(results.capex.solar_capex, inputs.currency)} />
+          <ResultRow label="BESS CAPEX" value={fmtC(results.capex.battery_capex, inputs.currency)} />
+          <ResultRow label="Inverter CAPEX" value={fmtC(results.capex.inverter_capex, inputs.currency)} />
+          <ResultRow label="Installation & Net Metering" value={fmtC(results.capex.installation, inputs.currency)} />
+          <ResultRow label="Total RE System CAPEX" value={fmtC(results.capex.total_re_capex, inputs.currency)} />
+          {includeEvCost ? (
+            <>
+              <ResultRow label="EV Purchase Cost" value={fmtC(results.capex.ev_purchase_cost, inputs.currency)} />
+              <ResultRow label="Charging Infrastructure" value={fmtC(results.capex.charging_infra, inputs.currency)} />
+            </>
+          ) : null}
+          <ResultRow label="Total Project CAPEX" value={fmtC(results.capex.total_project_capex, inputs.currency)} valueClass="orange-text large-val" />
+        </div>
+      </Card>
+
+      <Card title="💰 Financing Comparison">
+        <div className="alert alert-info">
+          Government Subsidy Applied: <strong>{fmtC(comparisonSubsidy, inputs.currency)}</strong>
+        </div>
         <div className="table-wrap">
           <table className="data-table">
             <tbody>
               <tr>
-                <th>Component</th>
-                <th className="right">Cost</th>
-                <th className="right">Share</th>
+                <th>Parameter</th>
+                <th className="right">With Subsidy</th>
+                <th className="right">Without Subsidy</th>
               </tr>
-              {Object.entries(results.capex.components).map(([name, cost]) => (
-                <tr key={name}>
-                  <td>{name}</td>
-                  <td className="right">{fmtC(cost, inputs.currency)}</td>
-                  <td className="right">{fmt((cost / results.capex.total) * 100, 1)}%</td>
-                </tr>
-              ))}
+              <tr>
+                <td>CAPEX</td>
+                <td className="right orange-text">{fmtC(comparisonCapexWithSubsidy, inputs.currency)}</td>
+                <td className="right">{fmtC(comparisonCapexWithoutSubsidy, inputs.currency)}</td>
+              </tr>
+              <tr>
+                <td>Loan Amount</td>
+                <td className="right">{fmtC(comparisonLoanWithSubsidy, inputs.currency)}</td>
+                <td className="right">{fmtC(comparisonLoanWithoutSubsidy, inputs.currency)}</td>
+              </tr>
+              <tr>
+                <td>Equity Amount</td>
+                <td className="right">{fmtC(comparisonEquityWithSubsidy, inputs.currency)}</td>
+                <td className="right">{fmtC(comparisonEquityWithoutSubsidy, inputs.currency)}</td>
+              </tr>
               <tr className="total-row">
-                <td>Total CAPEX</td>
-                <td className="right">{fmtC(results.capex.total, inputs.currency)}</td>
-                <td />
-              </tr>
-              <tr className="net-row">
-                <td>Net CAPEX (after subsidy)</td>
-                <td className="right">{fmtC(results.capex.net, inputs.currency)}</td>
-                <td />
+                <td>Monthly EMI</td>
+                <td className="right orange-text">{fmtC(comparisonEmiWithSubsidy, inputs.currency)}</td>
+                <td className="right">{fmtC(comparisonEmiWithoutSubsidy, inputs.currency)}</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div className="split-row">
-          <div className="chart-wrap pie-wrap">
-            <PieChart
-              data={{ labels, datasets: [{ data: values, backgroundColor: pieColors.slice(0, labels.length), borderWidth: 0 }] }}
-              options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'right', labels: { color: '#94A3B8', font: { size: 11 } } } } }}
-            />
-          </div>
-          <div className="summary-block">
-            <ResultRow label="Subtotal (components)" value={fmtC(results.capex.subtotal, inputs.currency)} />
-            <ResultRow label="Engineering + Contingency" value={fmtC(results.capex.components.Engineering + results.capex.components.Contingency, inputs.currency)} />
-            <ResultRow label={`GST (${inputs.gst}%)`} value={fmtC(results.capex.components.GST, inputs.currency)} />
-            <ResultRow label="Gross CAPEX" value={fmtC(results.capex.total, inputs.currency)} valueClass="blue-text" />
-            <ResultRow label="Subsidy" value={`- ${fmtC(inputs.subsidy, inputs.currency)}`} valueClass="green-text" />
-            <ResultRow label="Net CAPEX" value={fmtC(results.capex.net, inputs.currency)} valueClass="orange-text large-val" />
-            <ResultRow label="₹/kWp" value={results.solar.kwp > 0 ? fmtC(results.capex.net / results.solar.kwp, inputs.currency) : '-'} />
-          </div>
-        </div>
       </Card>
     </div>
   );
+}
+
+function computeComparisonEmi(principal: number, annualRate: number, years: number) {
+  if (!principal || !years) return 0;
+  const months = years * 12;
+  const monthlyRate = annualRate / 100 / 12;
+  if (!monthlyRate) return principal / months;
+  return (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
 }

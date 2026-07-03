@@ -1,4 +1,3 @@
-import { Result } from 'postcss';
 import type {
   AnalysisResults,
   AnalysisState,
@@ -9,12 +8,20 @@ import type {
   LoadResult,
   Scenario,
   SolarResult,
+  SystemMode,
 } from '../types/analysis';
-import { COLORS, initialState, MONTHLY_FACTORS } from './constants';
+import { COLORS, MONTHLY_FACTORS } from './constants';
 import { fmt } from './format';
+
 
 const emptyFinance: FinanceResult = {
   savings_yr1: 0,
+  grid_savings_yr1: 0,
+  net_meter_revenue_yr1: 0,
+  dg_savings_yr1: 0,
+  voll_benefits_yr1: 0,
+  ev_savings_yr1: 0,
+  benefits: { 5: 0, 10: 0, 15: 0, 20: 0, 25: 0 },
   npv: 0,
   irr: 0,
   payback: 0,
@@ -27,190 +34,231 @@ const emptyFinance: FinanceResult = {
   net_capex: 0,
 };
 
+export function isOnGridMode(mode: SystemMode) {
+  return mode === 'ongrid-rts-bess' || mode === 'ongrid-rts-bess-ev';
+}
+
+export function isOffGridMode(mode: SystemMode) {
+  return mode === 'offgrid-rts-bess' || mode === 'offgrid-rts-bess-ev';
+}
+
+export function isEvMode(mode: SystemMode) {
+  return mode.endsWith('-ev');
+}
+
+function yearsOfBenefits(cashflows: Array<{ net_cf: number }>): Record<5 | 10 | 15 | 20 | 25, number> {
+  return {
+    5: cashflows.slice(0, 5).reduce((sum, item) => sum + item.net_cf, 0),
+    10: cashflows.slice(0, 10).reduce((sum, item) => sum + item.net_cf, 0),
+    15: cashflows.slice(0, 15).reduce((sum, item) => sum + item.net_cf, 0),
+    20: cashflows.slice(0, 20).reduce((sum, item) => sum + item.net_cf, 0),
+    25: cashflows.slice(0, 25).reduce((sum, item) => sum + item.net_cf, 0),
+  };
+}
+
 export function computeLoad(state: AnalysisState): LoadResult {
   const { inputs } = state;
   let daily = 0;
+  let average = 0;
   let peak = 0;
-
-  let criticalDaily =0;
-  let criticalPeak =0;
-
-  let nonCriticalDaily =0;
-  let nonCriticalPeak =0;
+  let criticalDaily = 0;
+  let criticalPeak = 0;
+  let nonCriticalDaily = 0;
+  let nonCriticalPeak = 0;
 
   if (state.loadMethod === 'auto') {
-    const annual = inputs.area * inputs.eui * (inputs.occupancyDays / 365);
-    daily = annual / 365;
-    peak = daily / 12;
+    daily = inputs.area * inputs.eui;
+    average = daily / 24;
+    peak = average;
   } else if (state.loadMethod === 'appliance') {
+    const critical = state.appliances.filter((item) => item.priority === 'critical');
+    const nonCritical = state.appliances.filter((item) => item.priority === 'non_critical');
 
-  criticalDaily = state.appliances
-  .filter(
-    (item)=>
-      item.priority === "critical"
-  )
-  .reduce((sum, item) => sum + (item.qty * item.w * item.hrs) / 1000, 0);
-  
-  criticalPeak = state.appliances
-  .filter(
-    (item)=>
-      item.priority === "critical"
-)
-  .reduce((sum, item) => sum + (item.qty * item.w) / 1000, 0) * 0.7;
+    criticalDaily = critical.reduce((sum, item) => sum + (item.qty * item.w * item.hrs) / 1000, 0);
+    criticalPeak = critical.reduce((sum, item) => sum + (item.qty * item.w) / 1000, 0);
+    nonCriticalDaily = nonCritical.reduce((sum, item) => sum + (item.qty * item.w * item.hrs) / 1000, 0);
+    nonCriticalPeak = nonCritical.reduce((sum, item) => sum + (item.qty * item.w) / 1000, 0);
 
-nonCriticalDaily = 
-  state.appliances
-    .filter(
-      (item)=>
-        item.priority ===
-      "non_critical"
-    )
-    .reduce((sum, item)=> sum +(item.qty * item.w * item.hrs)/ 1000, 0);
-
-  nonCriticalPeak = 
-    state.appliances
-      .filter(
-        (item)=>
-          item.priority ===
-          "non_critical"
-      )
-      .reduce((sum,item)=> sum + (item.qty * item.w)/1000, 0)*0.7;
-
-  daily = criticalDaily + nonCriticalDaily;
-  peak = criticalPeak+nonCriticalPeak;
-  
-
+    daily = criticalDaily + nonCriticalDaily;
+    average = daily / 24;
+    peak = criticalPeak + nonCriticalPeak;
   } else if (state.loadMethod === 'bill') {
-    daily = inputs.billKwh / 30;
-    peak = daily / 14;
+    daily = inputs.tariff > 0 ? (inputs.billAmount / inputs.tariff) / 30 : 0;
+    average = daily / 24;
+    peak = inputs.contractDemand * 0.8;
   } else {
     daily = inputs.directDailyKwh;
+    average = daily / 24;
     peak = inputs.directPeakKw;
   }
-console.log("LOAD METHOD =", state.loadMethod);
-console.log("APPLIANCES =", state.appliances);
 
-  return { 
-    daily_kwh: daily, 
-    peak_kw: peak, 
-    annual_kwh: daily * 365, 
-
+  return {
+    daily_kwh: daily,
+    peak_kw: peak,
+    annual_kwh: daily * 365,
+    average_kw: average,
     critical_daily_kwh: criticalDaily,
     critical_peak_kw: criticalPeak,
-
     non_critical_daily_kwh: nonCriticalDaily,
     non_critical_peak_kw: nonCriticalPeak,
   };
+}
+
+export function computeBess(state: AnalysisState, load = computeLoad(state)): BessResult {
+  const { inputs } = state;
+  const dod = inputs.dod / 100 || 1;
+  const rte = inputs.rte / 100 || 1;
+  const chemCycles = { LFP: 4000, NMC: 2000, 'Lead-Acid': 500 };
+  const cycleLife = chemCycles[inputs.chemistry] || 4000;
+  let selectedDailyLoad = load.daily_kwh;
+  let selectedPeakLoad = load.peak_kw || load.average_kw;
+
+  if (state.loadMethod === 'appliance') {
+    if (inputs.batteryCoverage === 'critical') {
+      selectedDailyLoad = load.critical_daily_kwh || load.daily_kwh;
+      selectedPeakLoad = load.critical_peak_kw || load.peak_kw;
+    } else if (inputs.batteryCoverage === 'non_critical') {
+      selectedDailyLoad = load.non_critical_daily_kwh || load.daily_kwh;
+      selectedPeakLoad = load.non_critical_peak_kw || load.peak_kw;
+    }
+  }
+
+  const autonomyFraction = inputs.autonomyHours / 24;
+  const kwh = (selectedDailyLoad * autonomyFraction ) / (dod * rte);
+  const kw = selectedPeakLoad * 1.2;
+  const life_yrs = cycleLife / (365 * inputs.dailyCycles || 1);
+
+  return { kwh, kw, life_yrs, chem: inputs.chemistry, cost_kwh: inputs.bessCostKwh };
 
 }
-export function computeSolar(state: AnalysisState, load = computeLoad(state)): SolarResult {
+
+export function computeSolar(state: AnalysisState, load = computeLoad(state), bess = computeBess(state, load)): SolarResult {
   const { inputs } = state;
-  const psh = inputs.psh;
-  const PR = 1 - inputs.lossFactor / 100;
-  const designLoad = load.daily_kwh;
-  let kwp = designLoad / (psh * PR || 1);
-
-  if (state.mode === 'off-grid') kwp *= 1.15;
-  kwp = Math.ceil(kwp * 2) / 2;
-
-  const panels = Math.ceil((kwp * 1000) / inputs.panelWp);
+  
+  const cuf = (inputs.solarCuf || 18) / 100;
+  const dailyConsumption = load.daily_kwh;
+  const solarShare = (inputs.solarTimeShare || 40) / 100;
+  const batteryChargingRequirement =  bess.kwh;
+  const yearlyOutageHours = 645;
+  const solarHourLoad = dailyConsumption * solarShare;
+  const annualSolarHourLoad = solarHourLoad * 365;
+  const nonSolarHourLoad = Math.max(dailyConsumption - solarHourLoad, 0);
+  const targetDailySolar = solarHourLoad + batteryChargingRequirement;
+  const kwp = Math.ceil((targetDailySolar / (24 * cuf || 1)) * 10) / 10;
+  const panels = Math.ceil((kwp * 1000) / (inputs.panelWp ||1));
   const roofReq = panels * inputs.panelArea;
-  const annualGen = kwp * psh * PR * 365;
-  const monthlyGenMwh = MONTHLY_FACTORS.map((factor) => Number(((kwp * psh * PR * 30 * factor) / 1000).toFixed(2)));
+  // const annualGen = kwp * 24 * cuf * 365;
+  // const monthlyGenMwh = MONTHLY_FACTORS.map((factor) => Number(((annualGen / 12 / 1000) * factor).toFixed(2)));
+  const inverterKw = Math.ceil(load.peak_kw * 1.5 * 10) / 10;
+  const rte = inputs.rte / 100;
+  const yearlyBessCharging = ((yearlyOutageHours / rte) * 1.5) / 24;
+  const annualgen = kwp * cuf * 24 * 365;
+  const annualLoad = dailyConsumption * 365;
+  const annualNetMeterEnergy = annualgen -(bess.kwh * yearlyBessCharging) -annualSolarHourLoad;
+  const exportRevenueYr1 =
+    annualNetMeterEnergy *
+    inputs.gridExportTariff;
+
+    console.log({
+  annualgen,
+  annualLoad,
+  bessSize: bess.kwh,
+  yearlyBessCharging,
+  batteryChargingEnergy: bess.kwh * yearlyBessCharging,
+  annualNetMeterEnergy,
+});
 
   return {
     kwp,
     panels,
     roof_req: roofReq,
-    annual_gen: annualGen,
+    annual_gen: annualgen,
     degrad: inputs.degradation / 100,
-    psh,
-    PR,
-    monthlyGenMwh,
+    psh: inputs.psh,
+    PR: 1 - inputs.lossFactor / 100,
+    // monthlyGenMwh,
+    solar_hour_load: solarHourLoad,
+    non_solar_hour_load: nonSolarHourLoad,
+    inverter_kw: inverterKw,
+    yearly_bess_charging_days: yearlyBessCharging,
+    annual_net_meter_energy: annualNetMeterEnergy,
+    export_revenue_yr1: exportRevenueYr1,
   };
 }
 
-export function computeBess(state: AnalysisState, load = computeLoad(state)): BessResult {
-  if (state.mode === 'on-grid') return { kwh: 0, kw: 0, life_yrs: 0 };
 
-  const { inputs } = state;
-  const dod = inputs.dod / 100;
-  const rte = inputs.rte / 100;
-  const chemCycles = { LFP: 4000, NMC: 2000, 'Lead-Acid': 500 };
-  const cycleLife = chemCycles[inputs.chemistry] || 4000;
-      let selectedPeakLoad = load.peak_kw;
-      let selectedDailyLoad = load.daily_kwh;
 
-    if(state.loadMethod === "appliance"){
-      switch(inputs.batteryCoverage){
-        case "critical":
-          selectedPeakLoad = load.critical_peak_kw || load.non_critical_peak_kw;
-          selectedDailyLoad = load.critical_daily_kwh || load.daily_kwh;
-          break;
-          
-        case "non_critical":
-          selectedPeakLoad = load.non_critical_peak_kw || load.non_critical_peak_kw;
-          selectedDailyLoad = load.non_critical_daily_kwh || load.daily_kwh;
-          break;
-
-        case "all":
-          default:
-            selectedPeakLoad = load.peak_kw ;
-            selectedDailyLoad = load.daily_kwh;
-      }
-    }
-  const kwh =
-    state.mode === 'off-grid'|| 
-    state.mode === 'hybrid'
-      ? ((selectedPeakLoad || 20) * (inputs.backupHours /24)* inputs.autonomyDays) / (dod * rte || 1)
-      : (inputs.peakShaveTarget * inputs.backupHours) / (dod || 1);
-  
-    // state.mode === 'hybrid'
-    //   ? ((selectedPeakLoad || 20) * (inputs.backupHours /24)* inputs.autonomyDays) / (dod * rte || 1)
-    //   : (inputs.peakShaveTarget * inputs.backupHours) / (dod || 1);
- 
-
-  const kw = selectedPeakLoad * 1.2;
-  const life_yrs = cycleLife / (365 * inputs.dailyCycles || 1);
-
-  return { kwh, kw, life_yrs, chem: inputs.chemistry, cost_kwh: inputs.bessCostKwh };
+function computeEmi(principal: number, annualRate: number, years: number) {
+  if (!principal || !years) return 0;
+  const months = years * 12;
+  const monthlyRate = annualRate / 100 / 12;
+  if (!monthlyRate) return principal / months;
+  return (principal * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
 }
 
 export function computeCapex(state: AnalysisState, solar = computeSolar(state), bess = computeBess(state)): CapexResult {
   const { inputs } = state;
-  const panels = solar.kwp * 1000 * inputs.panelCost;
-  const inverter = solar.kwp * inputs.inverterCost;
-  const battery = bess.kwh * inputs.bessCostKwh;
-  const mounting = solar.kwp * 1000 * inputs.mountingCost;
-  const bos = solar.kwp * 1000 * inputs.bosCost;
-  const installation = solar.kwp * 1000 * inputs.installCost;
-  const monitoring = inputs.monitoringCost;
-  const subtotal = panels + inverter + battery + mounting + bos + installation + monitoring;
-  const engineering = (subtotal * inputs.engineeringPct) / 100;
-  const contingency = (subtotal * inputs.contingencyPct) / 100;
-  const gst = ((subtotal + engineering + contingency) * inputs.gst) / 100;
-  const total = subtotal + engineering + contingency + gst;
-  const net = Math.max(total - inputs.subsidy, 0);
+  const solarCapex = solar.kwp * inputs.panelCost;
+  const inverterCapex = solar.inverter_kw * inputs.inverterCost;
+  const batteryCapex = bess.kwh * inputs.bessCostKwh;
+  const componentSubtotal = solarCapex + inverterCapex + batteryCapex;
+  const installation = (componentSubtotal * inputs.installCost) / 100;
+  const netMetering = 0;
+  const reSubtotal = componentSubtotal + installation;
+  const engineering = 0;
+  const contingency = 0;
+  const gst = 0;
+  const totalReCapex = reSubtotal;
+  const includeEvCost = isEvMode(inputs.systemMode) && inputs.evCostOption === 'included';
+  const evPurchaseCost = includeEvCost ? inputs.evPurchaseCost : 0;
+  const chargingInfra = includeEvCost ? inputs.chargingInfraCost : 0;
+  const totalProjectCapex = totalReCapex + evPurchaseCost + chargingInfra;
+  const solarSubsidy = solar.kwp <= 1 ? 30000 : solar.kwp <= 2 ? 60000 : 78000;
+  const subsidy = inputs.governmentSubsidy === 'yes' ? solarSubsidy : 0;
+  const capexWithSubsidy = Math.max(totalProjectCapex - subsidy, 0);
+  const capexWithoutSubsidy = totalProjectCapex;
+  const loanAmountAfterSubsidy = inputs.externalFinancing === 'yes' ? (capexWithSubsidy * inputs.loanPct) / 100 : 0;
+  const loanAmountWithoutSubsidy = inputs.externalFinancing === 'yes' ? (capexWithoutSubsidy * inputs.loanPct) / 100 : 0;
+  const equityAfterSubsidy = capexWithSubsidy - loanAmountAfterSubsidy;
+  const equityWithoutSubsidy = capexWithoutSubsidy - loanAmountWithoutSubsidy;
+  const emiAfterSubsidy = computeEmi(loanAmountAfterSubsidy, inputs.interestRate, inputs.tenure);
+  const emiWithoutSubsidy = computeEmi(loanAmountWithoutSubsidy, inputs.interestRate, inputs.tenure);
 
   return {
-    total,
-    net,
-    subtotal,
+    total: totalProjectCapex,
+    net: capexWithSubsidy,
+    subtotal: reSubtotal,
     components: {
-      Panels: panels,
-      Inverter: inverter,
-      BESS: battery,
-      Mounting: mounting,
-      'BoS/Wiring': bos,
-      Installation: installation,
-      Monitoring: monitoring,
-      Engineering: engineering,
-      Contingency: contingency,
-      GST: gst,
+      'Solar CAPEX': solarCapex,
+      'Battery CAPEX': batteryCapex,
+      'Inverter CAPEX': inverterCapex,
+      'Installation & Net Metering': installation,
+      'EV Purchase Cost': evPurchaseCost,
+      'Charging Infrastructure': chargingInfra,
     },
     om_pct: inputs.omPct,
     ins_pct: inputs.insurancePct,
-    subsidy: inputs.subsidy,
+    subsidy,
+    solar_capex: solarCapex,
+    battery_capex: batteryCapex,
+    inverter_capex: inverterCapex,
+    installation,
+    net_metering: netMetering,
+    total_re_capex: totalReCapex,
+    ev_purchase_cost: evPurchaseCost,
+    charging_infra: chargingInfra,
+    total_project_capex: totalProjectCapex,
+    capex_with_subsidy: capexWithSubsidy,
+    capex_without_subsidy: capexWithoutSubsidy,
+    loan_amount: loanAmountAfterSubsidy,
+    equity_amount: equityAfterSubsidy,
+    emi: emiAfterSubsidy,
+    loan_amount_after_subsidy: loanAmountAfterSubsidy,
+    loan_amount_without_subsidy: loanAmountWithoutSubsidy,
+    equity_after_subsidy: equityAfterSubsidy,
+    equity_without_subsidy: equityWithoutSubsidy,
+    emi_after_subsidy: emiAfterSubsidy,
+    emi_without_subsidy: emiWithoutSubsidy,
   };
 }
 
@@ -222,22 +270,20 @@ export function computeFinance(
 ): FinanceResult {
   const { inputs } = state;
   const netCapex = capex.net;
-  if (!netCapex || !solar.kwp) return emptyFinance;
+  if (!netCapex) return emptyFinance;
 
   const tariffEsc = inputs.tariffEscalation / 100;
   const discountRate = inputs.discountRate / 100;
   const life = inputs.projectLife || 25;
-  const selfCon = inputs.selfConsumption / 100;
-  const exportPct = inputs.exportPct / 100;
+  const selfCon = isOnGridMode(inputs.systemMode) ? Math.max(0, 1 - inputs.exportPct / 100) : 1;
+  const exportPct = isOnGridMode(inputs.systemMode) ? inputs.exportPct / 100 : 0;
   const inflation = inputs.inflation / 100;
   const omPct = capex.om_pct / 100;
   const insPct = capex.ins_pct / 100;
-  const solarCostPerkwh = capex.net / (solar.annual_gen * life);
   const initialBatteryCost = bess.kwh * inputs.bessCostKwh;
-  const batterryRplacementCost = initialBatteryCost * 0.6;
-  const batteryCoverageeplacementYear = Math.ceil(bess.life_yrs);
-  const initialInverterCost = solar.kwp * inputs.inverterCost;
-  const inverterReplacementCost = initialInverterCost * 0.8;
+  const batteryReplacementCost = initialBatteryCost * 0.6;
+  const batteryReplacementYear = Math.ceil(bess.life_yrs);
+  const inverterReplacementCost = capex.inverter_capex * 0.8;
   const inverterReplacementYear = 11;
   const cashflows = [];
   const years = [];
@@ -249,36 +295,45 @@ export function computeFinance(
   for (let n = 1; n <= life; n += 1) {
     const gen_n = solar.annual_gen * Math.pow(1 - solar.degrad, n - 1);
     const tariff_n = inputs.tariff * Math.pow(1 + tariffEsc, n - 1);
-    const savings_n =
-      state.mode === 'off-grid'
-        ? gen_n * Math.max(inputs.dgCost - solarCostPerkwh, 0)
-        : gen_n * (selfCon * tariff_n + exportPct * inputs.exportRate);
-    const om_n = capex.total * omPct * Math.pow(1 + inflation, n - 1);
-    const ins_n = capex.total * insPct * Math.pow(1 + inflation, n - 1);
-   
-    // const bess_capex_n = bess.life_yrs > 0 && bess.kwh > 0 && Math.round(n) === Math.round(bess.life_yrs) ? bessReplaceCost : 0;
-    const bess_capex_n = batteryCoverageeplacementYear > 0 && bess.kwh > 0 && n %batteryCoverageeplacementYear === 0 ?batterryRplacementCost : 0;
+    const grid_savings_n = gen_n * selfCon * tariff_n;
+    const export_revenue_n = gen_n * exportPct * inputs.gridExportTariff;
+    const dg_savings_n = isOffGridMode(inputs.systemMode) ? gen_n * Math.max(inputs.dgCost - tariff_n, 0) : 0;
+    const voll_benefits_n = inputs.vollBenefit * Math.pow(1 + inflation, n - 1);
+    const ev_savings_n = isEvMode(inputs.systemMode) && inputs.evCostOption === 'included' ? inputs.evAnnualSavings * Math.pow(1 + inflation, n - 1) : 0;
+    const savings_n = grid_savings_n + export_revenue_n + dg_savings_n + voll_benefits_n + ev_savings_n;
+    const om_n = capex.total_re_capex * omPct * Math.pow(1 + inflation, n - 1);
+    const ins_n = capex.total_re_capex * insPct * Math.pow(1 + inflation, n - 1);
+    const bess_capex_n = batteryReplacementYear > 0 && bess.kwh > 0 && n % batteryReplacementYear === 0 ? batteryReplacementCost : 0;
     const inverter_capex_n = inverterReplacementYear > 0 && n % inverterReplacementYear === 0 ? inverterReplacementCost : 0;
     const net_cf = savings_n - om_n - ins_n - bess_capex_n - inverter_capex_n;
     const disc_cf = net_cf / Math.pow(1 + discountRate, n);
-    
 
     cumulative += net_cf;
     discCumulative += disc_cf;
     if (simplePayback === null && cumulative - netCapex >= 0) simplePayback = n;
     if (discPayback === null && discCumulative - netCapex >= 0) discPayback = n;
-    cashflows.push({ n, gen_n, tariff_n, savings_n, om_n, ins_n, bess_capex_n,inverter_capex_n, net_cf, disc_cf, cum: cumulative, disc_cum: discCumulative });
-    years.push(n);
 
-    console.log(
-      "Year",
+    cashflows.push({
       n,
-      "Battery",
+      gen_n,
+      tariff_n,
+      savings_n,
+      om_n,
+      ins_n,
       bess_capex_n,
-      "Inverter",
-      inverter_capex_n
-    );
-      }
+      inverter_capex_n,
+      net_cf,
+      disc_cf,
+      cum: cumulative,
+      disc_cum: discCumulative,
+      grid_savings_n,
+      export_revenue_n,
+      dg_savings_n,
+      voll_benefits_n,
+      ev_savings_n,
+    });
+    years.push(n);
+  }
 
   const savings_yr1 = cashflows[0]?.savings_n || 0;
   const payback = simplePayback || netCapex / (savings_yr1 || 1);
@@ -297,27 +352,7 @@ export function computeFinance(
     irr -= f / df;
   }
 
-  const pvOpex = cashflows.reduce(
-  (
-    sum,
-    {
-      om_n,
-      ins_n,
-      bess_capex_n,
-      inverter_capex_n,
-    },
-    i
-  ) =>
-    sum +
-    (
-      om_n +
-      ins_n +
-      bess_capex_n +
-      inverter_capex_n
-    ) /
-      Math.pow(1 + discountRate, i + 1),
-  0
-);
+  const pvOpex = cashflows.reduce((sum, { om_n, ins_n, bess_capex_n, inverter_capex_n }, i) => sum + (om_n + ins_n + bess_capex_n + inverter_capex_n) / Math.pow(1 + discountRate, i + 1), 0);
   const pvGen = cashflows.reduce((sum, { gen_n }, i) => sum + gen_n / Math.pow(1 + discountRate, i + 1), 0);
   const lcoe = (netCapex + pvOpex) / (pvGen || 1);
   const roi = (cashflows.reduce((sum, { net_cf }) => sum + net_cf, 0) / netCapex) * 100;
@@ -325,6 +360,12 @@ export function computeFinance(
 
   return {
     savings_yr1,
+    grid_savings_yr1: cashflows[0]?.grid_savings_n || 0,
+    net_meter_revenue_yr1: cashflows[0]?.export_revenue_n || 0,
+    dg_savings_yr1: cashflows[0]?.dg_savings_n || 0,
+    voll_benefits_yr1: cashflows[0]?.voll_benefits_n || 0,
+    ev_savings_yr1: cashflows[0]?.ev_savings_n || 0,
+    benefits: yearsOfBenefits(cashflows),
     npv,
     irr: irr * 100,
     payback,
@@ -347,13 +388,9 @@ export function computeEnv(state: AnalysisState, solar = computeSolar(state)): E
   for (let n = 1; n <= state.inputs.projectLife; n += 1) {
     co2_total += (solar.annual_gen * Math.pow(1 - solar.degrad, n - 1) * co2Factor) / 1000;
     cumulativeCo2.push(Number(co2_total.toFixed(1)));
-
-    
   }
 
   return { co2_yr1, co2_total, trees: co2_total * 45, gen_yr1: solar.annual_gen, cumulativeCo2 };
-
-  
 }
 
 export function computeScenarios(state: AnalysisState, solar: SolarResult, bess: BessResult, capex: CapexResult): { scenarios: Scenario[]; bestScenarioIndex: number } {
@@ -361,24 +398,24 @@ export function computeScenarios(state: AnalysisState, solar: SolarResult, bess:
   const life = inputs.projectLife || 25;
   const degrad = solar.degrad || 0.005;
 
-  function scenNPV(selfCon: number, exportPct: number, exportRate: number, bessCostExtra: number) {
-    const netCapex = capex.net + bessCostExtra;
+  function scenNPV(name: string, selfCon: number, exportPct: number, exportRate: number, capexMultiplier: number) {
+    const netCapex = capex.net * capexMultiplier;
     let disc = 0;
     for (let n = 1; n <= life; n += 1) {
       const generation = solar.annual_gen * Math.pow(1 - degrad, n - 1);
       const tariff = inputs.tariff * Math.pow(1 + inputs.tariffEscalation / 100, n - 1);
       disc += (generation * (selfCon * tariff + exportPct * exportRate)) / Math.pow(1 + inputs.discountRate / 100, n);
     }
-    return { npv: disc - netCapex, pb: netCapex / (solar.annual_gen * selfCon * inputs.tariff || 1), netCapex };
+    return { name, npv: disc - netCapex, pb: netCapex / (solar.annual_gen * selfCon * inputs.tariff || 1), netCapex };
   }
 
-  const ong = scenNPV(0.8, 0.2, inputs.exportRate || 4, 0);
-  const hyb = scenNPV(0.95, 0.05, 2, bess.kwh * inputs.bessCostKwh);
-  const off = scenNPV(1.0, 0, 0, bess.kwh * inputs.bessCostKwh * 1.5);
+  const selected = scenNPV('Selected', isOnGridMode(inputs.systemMode) ? 0.8 : 1, isOnGridMode(inputs.systemMode) ? 0.2 : 0, inputs.gridExportTariff, 1);
+  const gridBess = scenNPV('Grid + BESS', 0.7, 0, 0, 0.9);
+  const rtsBess = scenNPV('RTS + BESS', 1, 0, 0, 1.1);
   const scenarios = [
-    { name: 'On-Grid', icon: '🔌', npv: ong.npv, pb: ong.pb, capex: ong.netCapex, color: COLORS.blue, self: '80%', bess: 'None' },
-    { name: 'Hybrid', icon: '⚡', npv: hyb.npv, pb: hyb.pb, capex: hyb.netCapex, color: COLORS.orange, self: '95%', bess: bess.kwh > 0 ? `${fmt(bess.kwh, 1)} kWh` : 'Opt.' },
-    { name: 'Off-Grid', icon: '🏕️', npv: off.npv, pb: off.pb, capex: off.netCapex, color: COLORS.green, self: '100%', bess: bess.kwh > 0 ? `${fmt(bess.kwh * 1.5, 1)} kWh` : '-' },
+    { name: selected.name, icon: '*', npv: selected.npv, pb: selected.pb, capex: selected.netCapex, color: COLORS.blue, self: isOnGridMode(inputs.systemMode) ? '80%' : '100%', bess: bess.kwh > 0 ? `${fmt(bess.kwh, 1)} kWh` : '-' },
+    { name: gridBess.name, icon: '*', npv: gridBess.npv, pb: gridBess.pb, capex: gridBess.netCapex, color: COLORS.orange, self: '70%', bess: bess.kwh > 0 ? `${fmt(bess.kwh, 1)} kWh` : '-' },
+    { name: rtsBess.name, icon: '*', npv: rtsBess.npv, pb: rtsBess.pb, capex: rtsBess.netCapex, color: COLORS.green, self: '100%', bess: bess.kwh > 0 ? `${fmt(bess.kwh, 1)} kWh` : '-' },
   ];
   const bestScenarioIndex = scenarios.reduce((best, scenario, index) => (scenario.npv > scenarios[best].npv ? index : best), 0);
   return { scenarios, bestScenarioIndex };
@@ -386,8 +423,8 @@ export function computeScenarios(state: AnalysisState, solar: SolarResult, bess:
 
 export function computeAll(state: AnalysisState): AnalysisResults {
   const load = computeLoad(state);
-  const solar = computeSolar(state, load);
   const bess = computeBess(state, load);
+  const solar = computeSolar(state, load, bess);
   const capex = computeCapex(state, solar, bess);
   const fin = computeFinance(state, solar, bess, capex);
   const env = computeEnv(state, solar);

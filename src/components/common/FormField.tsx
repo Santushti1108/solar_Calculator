@@ -19,7 +19,6 @@ interface FormFieldProps {
 export function FormField({ label, value, type = 'text', options, step, min, max, placeholder, hint, onChange }: FormFieldProps) {
   const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const value = event.target.value;
-    console.log("FormField:", value);
 
     if (type === "number"){
       onChange(

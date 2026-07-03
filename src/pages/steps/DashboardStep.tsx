@@ -13,7 +13,7 @@ export function DashboardStep() {
   return (
     <div className="step-panel visible">
       <div className="panel-title">
-        Results Dashboard <span>Step 10</span>
+        Final Report / Summary <span>Step 9</span>
       </div>
       <div className="panel-sub"></div>
       <div className="kpi-grid">

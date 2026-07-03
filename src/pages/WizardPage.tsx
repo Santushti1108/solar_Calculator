@@ -9,15 +9,13 @@ import { EnvironmentStep } from './steps/EnvironmentStep';
 import { FinanceStep } from './steps/FinanceStep';
 import { LoadEstimationStep } from './steps/LoadEstimationStep';
 import { ProjectSetupStep } from './steps/ProjectSetupStep';
-import { RoofSuitabilityStep } from './steps/RoofSuitabilityStep';
 import { SolarSizingStep } from './steps/SolarSizingStep';
 
 const steps = [
   ProjectSetupStep,
   LoadEstimationStep,
-  SolarSizingStep,
-  RoofSuitabilityStep,
   BessSizingStep,
+  SolarSizingStep,
   CapexStep,
   FinanceStep,
   EnvironmentStep,

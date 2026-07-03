@@ -12,7 +12,7 @@ export function EnvironmentStep() {
   return (
     <div className="step-panel visible">
       <div className="panel-title">
-        Environmental Impact <span>Step 8</span>
+        Environmental Impact <span>Step 7</span>
       </div>
       <div className="panel-sub"></div>
       <Card title="🌿 Environmental Benefits">
