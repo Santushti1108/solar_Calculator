@@ -3,15 +3,16 @@ import { FormField } from '../../components/common/FormField';
 import { KpiCard } from '../../components/common/KpiCard';
 import { ResultRow } from '../../components/common/ResultRow';
 import { useAnalysis } from '../../context/AnalysisContext';
-import { isEvMode } from '../../utils/calculations';
+import { isEvMode, isRtsMode } from '../../utils/calculations';
 import { fmt, fmtC } from '../../utils/format';
 
 export function CapexStep() {
   const { state, results, updateInput } = useAnalysis();
   const { inputs } = state;
+  const hasRts = isRtsMode(inputs.systemMode);
   const includeEvCost = isEvMode(inputs.systemMode) && inputs.evCostOption === 'included';
   const showFinancing = inputs.externalFinancing === 'yes';
-  const comparisonSubsidy = results.solar.kwp <= 1 ? 30000 : results.solar.kwp <= 2 ? 60000 : 78000;
+  const comparisonSubsidy = hasRts ? (results.solar.kwp <= 1 ? 30000 : results.solar.kwp <= 2 ? 60000 : 78000) : 0;
   const comparisonCapexWithoutSubsidy = results.capex.capex_without_subsidy;
   const comparisonCapexWithSubsidy = Math.max(comparisonCapexWithoutSubsidy - comparisonSubsidy, 0);
   const comparisonLoanPct = inputs.externalFinancing === 'yes' ? inputs.loanPct / 100 : 0;
@@ -35,22 +36,28 @@ export function CapexStep() {
             <div className="summary-title">RE System Parameters</div>
           </div>
           <div className="summary-right">
-            <div className="summary-pill">
-              <span>Solar CUF</span>
-              <strong>{fmt(inputs.solarCuf, 1)}%</strong>
-            </div>
-            <div className="summary-pill">
-              <span>Solar Capacity</span>
-              <strong>{fmt(results.solar.kwp, 1)} kWp</strong>
-            </div>
+            {hasRts ? (
+              <>
+                <div className="summary-pill">
+                  <span>Solar CUF</span>
+                  <strong>{fmt(inputs.solarCuf, 1)}%</strong>
+                </div>
+                <div className="summary-pill">
+                  <span>Solar Capacity</span>
+                  <strong>{fmt(results.solar.kwp, 1)} kWp</strong>
+                </div>
+              </>
+            ) : null}
             <div className="summary-pill">
               <span>BESS Capacity</span>
               <strong>{fmt(results.bess.kwh, 1)} kWh</strong>
             </div>
-            <div className="summary-pill">
-              <span>Inverter Capacity</span>
-              <strong>{fmt(results.solar.inverter_kw, 1)} kW</strong>
-            </div>
+            {hasRts ? (
+              <div className="summary-pill">
+                <span>Inverter Capacity</span>
+                <strong>{fmt(results.solar.inverter_kw, 1)} kW</strong>
+              </div>
+            ) : null}
             {/* <div className="summary-pill">
               <span>Solar PV Unit Cost</span>
               <strong>{fmtC(inputs.panelCost, inputs.currency)}/kWp</strong>
@@ -67,7 +74,7 @@ export function CapexStep() {
               <span>Installation & Net Metering</span>
               <strong>{fmt(inputs.installCost, 0)}%</strong>
             </div>
-            <div className="summary-pill">
+            {/* <div className="summary-pill">
               <span>Project Life</span>
               <strong>{fmt(inputs.projectLife)} yrs</strong>
             </div>
@@ -78,16 +85,16 @@ export function CapexStep() {
             <div className="summary-pill">
               <span>O&M Escalation Rate</span>
               <strong>{fmt(inputs.omEscalationRate, 0)}%</strong>
-            </div>
+            </div> */}
           </div>
         </div>
       </Card>
 
-      <Card title="User Inputs">
+      <Card title=" cost and loan inputs">
         <div className="form-grid">
-          <FormField label="Solar PV Unit Cost (Rs./kWp)" type="number" value={inputs.panelCost} step="1000" onChange={(value) => updateInput('panelCost', Number(value))} />
+          {hasRts ? <FormField label="Solar PV Unit Cost (Rs./kWp)" type="number" value={inputs.panelCost} step="1000" onChange={(value) => updateInput('panelCost', Number(value))} /> : null}
           <FormField label="BESS Unit Cost (Rs./kWh)" type="number" value={inputs.bessCostKwh} step="1000" onChange={(value) => updateInput('bessCostKwh', Number(value))} />
-          <FormField label="Inverter Unit Cost (Rs./kW)" type="number" value={inputs.inverterCost} step="500" onChange={(value) => updateInput('inverterCost', Number(value))} />
+          {hasRts ? <FormField label="Inverter Unit Cost (Rs./kW)" type="number" value={inputs.inverterCost} step="500" onChange={(value) => updateInput('inverterCost', Number(value))} /> : null}
           <FormField label="Include Government Subsidy?" value={inputs.governmentSubsidy} onChange={(value) => updateInput('governmentSubsidy', value as 'yes' | 'no')} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }]} />
           <FormField label="External Financing?" value={inputs.externalFinancing} onChange={(value) => updateInput('externalFinancing', value as 'yes' | 'no')} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }]} />
           {showFinancing ? (
@@ -135,7 +142,7 @@ export function CapexStep() {
         </div>
       </Card>
 
-      <Card title="💰 Financing Comparison">
+      <Card title="Financing Comparison">
         <div className="alert alert-info">
           Government Subsidy Applied: <strong>{fmtC(comparisonSubsidy, inputs.currency)}</strong>
         </div>

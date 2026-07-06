@@ -4,11 +4,13 @@ import { KpiCard } from '../../components/common/KpiCard';
 import { useAnalysis } from '../../context/AnalysisContext';
 import { COLORS } from '../../utils/constants';
 import { exportCashflowCsv } from '../../utils/export';
+import { isRtsMode } from '../../utils/calculations';
 import { fmt, fmtC } from '../../utils/format';
 
 export function DashboardStep() {
   const { state, results } = useAnalysis();
   const cfs = results.fin.cashflows;
+  const hasRts = isRtsMode(state.inputs.systemMode);
 
   return (
     <div className="step-panel visible">
@@ -17,18 +19,18 @@ export function DashboardStep() {
       </div>
       <div className="panel-sub"></div>
       <div className="kpi-grid">
-        <KpiCard value={fmt(results.solar.kwp, 1)} unit="kWp" label="Solar Size" />
-        <KpiCard value={fmt(results.solar.panels)} unit="panels" label="Panel Count" />
+        {hasRts ? <KpiCard value={fmt(results.solar.kwp, 1)} unit="kWp" label="Solar Size" /> : null}
+        {hasRts ? <KpiCard value={fmt(results.solar.panels)} unit="panels" label="Panel Count" /> : null}
         <KpiCard value={results.bess.kwh > 0 ? fmt(results.bess.kwh, 1) : '-'} unit="kWh" label="Battery Size" tone="orange" />
         <KpiCard value={fmt(results.capex.net / 100000, 1)} unit="Lakh ₹" label="Net CAPEX" />
         <KpiCard value={fmt(results.fin.savings_yr1 / 100000, 2)} unit="Lakh ₹/yr" label="Annual Savings" tone="green" />
         <KpiCard value={fmt(results.fin.payback, 1)} unit="years" label="Payback" />
-        <KpiCard value={fmt(results.fin.npv / 100000, 1)} unit="Lakh ₹" label="NPV" tone="orange" />
-        <KpiCard value={`${fmt(results.fin.irr, 1)}%`} label="IRR" />
+        <KpiCard value={fmt(results.fin.npv[25] / 100000, 1)} unit="Lakh ₹" label="NPV" tone="orange" />
+        <KpiCard value={`${fmt(results.fin.irr[25], 1)}%`} label="IRR" />
         <KpiCard value={fmt(results.env.co2_total, 0)} unit="tonnes" label="CO₂ Offset" tone="green" />
-        <KpiCard value={fmt(results.fin.lcoe, 2)} unit="₹/kWh" label="LCOE" />
+        <KpiCard value={results.fin.lcoe === null ? '-' : fmt(results.fin.lcoe, 2)} unit="₹/kWh" label="LCOE" />
         <KpiCard value={`${fmt(results.fin.roi, 0)}%`} label="ROI (25yr)" tone="orange" />
-        <KpiCard value={fmt(results.solar.annual_gen / 1000, 1)} unit="MWh/yr" label="Year-1 Gen" />
+        {hasRts ? <KpiCard value={fmt(results.solar.annual_gen / 1000, 1)} unit="MWh/yr" label="Year-1 Gen" /> : null}
       </div>
       <Card title="⚡ Generation & Savings Forecast">
         <div className="chart-wrap tall">

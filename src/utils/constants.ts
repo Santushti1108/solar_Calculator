@@ -154,6 +154,10 @@ export const initialState: AnalysisState = {
     inflation: 6,
     batteryCoverage :"critical",
     contractDemand: 0,
+    dieselPrice: 95,
+    vollRate: 100,
+    evElectricityCost: 4,
+    fuelEscalation : 5,
     
   },
 };

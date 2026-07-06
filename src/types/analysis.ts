@@ -93,6 +93,11 @@ export interface Inputs {
     |"non_critical"
     |"all",
   contractDemand: number;
+  dieselPrice: number;
+  vollRate: number;
+  evElectricityCost: number;
+  fuelEscalation : number;
+  
 }
 
 export interface LoadResult {
@@ -192,17 +197,18 @@ export interface FinanceResult {
   dg_savings_yr1: number;
   voll_benefits_yr1: number;
   ev_savings_yr1: number;
-  benefits: Record<5 | 10 | 15 | 20 | 25, number>;
-  npv: number;
-  irr: number;
-  payback: number;
   disc_payback: number;
-  lcoe: number;
+  lcoe: number|null;
   roi: number;
   bcr: number;
   cashflows: Cashflow[];
   years: number[];
   net_capex: number;
+  benefits: Record<5 | 10 | 15 | 20 | 25, number>;
+  npv: Record<5 | 10 | 15 | 20 | 25, number>;
+  irr: Record<5 | 10 | 15 | 20 | 25, number>;
+  payback: number;
+  
 }
 
 export interface EnvResult {

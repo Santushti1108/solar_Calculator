@@ -20,8 +20,9 @@ export function BessSizingStep() {
         Daily consumption is auto-filled from Load Estimation: <strong>{fmt(results.load.daily_kwh, 1)} kWh/day</strong>
       </div >
        <div className="alert alert-info mt-3">
-      <strong>Battery Assumptions</strong><br />
+      <strong>Battery Assumptions :</strong><br />
         Depth of Discharge (DOD): 80%;
+        <br />
         Round Trip Efficiency (RTE): 92%;
       </div>
       </div>
@@ -59,9 +60,9 @@ export function BessSizingStep() {
             value={inputs.chemistry}
             onChange={(value) => updateInput('chemistry', value as Inputs['chemistry'])}
             options={[
-              { value: 'LFP', label: 'LFP (LiFePO4) - 4000 cycles' },
-              { value: 'NMC', label: 'NMC - 2000 cycles' },
-              { value: 'Lead-Acid', label: 'Lead-Acid - 500 cycles' },
+              { value: 'LFP', label: 'LFP (LiFePO4) - 4000 cycles (11 year)' },
+              { value: 'NMC', label: 'NMC - 2000 cycles (4.5 years)' },
+              { value: 'Lead-Acid', label: 'Lead-Acid - 500 cycles (1.5 year)' },
             ]}
           />
           {/* <FormField label="Depth of Discharge DoD (%)" type="number" value={inputs.dod} min="50" max="100" onChange={(value) => updateInput('dod', Number(value))} /> */}

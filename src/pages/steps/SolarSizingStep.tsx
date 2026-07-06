@@ -4,8 +4,11 @@ import { FormField } from '../../components/common/FormField';
 import { KpiCard } from '../../components/common/KpiCard';
 import { useAnalysis } from '../../context/AnalysisContext';
 import { COLORS, MONTHS } from '../../utils/constants';
-import { isOnGridMode } from '../../utils/calculations';
+import { isOnGridMode, isRtsMode } from '../../utils/calculations';
+
 import { fmt } from '../../utils/format';
+
+
 
 const solarTechnologies = [
   { value: '330', label: 'Polycrystalline (330W)', area: 2.0 },
@@ -23,6 +26,28 @@ export function SolarSizingStep() {
   };
   const chartOptions = darkChartOptions(false);
   const onGrid = isOnGridMode(inputs.systemMode);
+  const hasRts = isRtsMode(inputs.systemMode);
+
+  if (!hasRts) {
+    return (
+    <div className="step-panel visible">
+      <div className="panel-title">
+        Solar PV Sizing <span>Step 4</span>
+      </div>
+
+      <Card title=" Rooftop Solar (RTS) Not Available">
+        <div className="alert alert-info">
+          {/* <strong>Selected Mode:</strong> {inputs.systemMode} */}
+          {/* <br /><br /> */}
+          The selected system configuration does not include a Rooftop Solar (RTS) system.
+          Therefore, Solar PV sizing is not applicable. 
+          <br />
+          Please go to next step.
+        </div>
+      </Card>
+    </div>
+  );
+}
 
   return (
     <div className="step-panel visible">

@@ -1,5 +1,6 @@
 import type { SystemMode } from '../../types/analysis';
 import { useAnalysis } from '../../context/AnalysisContext';
+import { isEvMode } from '../../utils/calculations';
 import { FormField } from '../common/FormField';
 
 const modes: Array<{ id: SystemMode;name: string; desc: string }> = [
@@ -15,7 +16,7 @@ const modes: Array<{ id: SystemMode;name: string; desc: string }> = [
 export function ModeSelector() {
   const { state, setMode,updateInput } = useAnalysis();
   const { inputs } = state;
-  const isEvMode = inputs.systemMode.includes("ev");
+  const showEvOptions = isEvMode(inputs.systemMode);
 
 
 
@@ -31,7 +32,7 @@ export function ModeSelector() {
       ))}
     </div>
 
-    {isEvMode && (
+    {showEvOptions && (
         <div className="mt-4">
           <FormField
             label="EV Cost"

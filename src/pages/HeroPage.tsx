@@ -2,45 +2,45 @@ import { useAnalysis } from '../context/AnalysisContext';
 
 const features = [
   {
-    icon: 'PV',
+    icon: '☀️',
     label: 'Solar PV system sizing and generation analysis',
   },
   {
-    icon: 'B',
+    icon: '🔋',
     label: 'Battery Energy Storage System (BESS) sizing',
   },
   {
-    icon: 'F',
+    icon: '⚡',
     label: 'Financial analysis including NPV, IRR, ROI and Payback',
   },
   {
-    icon: 'CO2',
+    icon: '🌱',
     label: 'Environmental impact and CO2 reduction assessment',
   },
   {
-    icon: 'M',
+    icon: '📊',
     label: 'Scenario comparison across RTS, Grid, BESS and EV modes',
   },
 ];
 
 const stats = [
   {
-    icon: 'W',
-    value: '10-Step',
+    icon: '🧭',
+    value: '9-Step',
     label: 'Guided Wizard',
   },
   {
-    icon: 'K',
+    icon: '📊',
     value: '8 KPIs',
     label: 'Financial Metrics',
   },
   {
-    icon: 'M',
+    icon: '⚡',
     value: '6 Modes',
     label: 'RTS, Grid, BESS and EV',
   },
   {
-    icon: 'Y',
+    icon: '📅',
     value: '25-Year',
     label: 'Cash Flow Model',
   },
