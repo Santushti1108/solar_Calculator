@@ -58,13 +58,23 @@ function yearsOfNPV(
     cashflows
       .slice(0, years)
       .reduce((sum, cf) => sum + cf.disc_cf, 0) - netCapex;
+  
+  const calc1 = (yr: number) => netCapex - cashflows.slice(0, yr).reduce((sum, cf) => sum + cf.disc_cf, 0);
+
+  // return {
+  //   5: calc(5),
+  //   10: calc(10),
+  //   15: calc(15),
+  //   20: calc(20),
+  //   25: calc(25),
+  // };
 
   return {
-    5: calc(5),
-    10: calc(10),
-    15: calc(15),
-    20: calc(20),
-    25: calc(25),
+    5: calc1(5),
+    10: calc1(10),
+    15: calc1(15),
+    20: calc1(20),
+    25: calc1(25),
   };
 }
 
@@ -537,6 +547,9 @@ export function computeFinance(
   const { inputs } = state;
   const netCapex = capex.net;
   if (!netCapex) return emptyFinance;
+  
+  console.log(capex);
+  console.log(capex.net)
 
   const cap = resolveCapabilities(inputs.systemMode);
 
@@ -641,10 +654,10 @@ console.log(inputs.tariffEscalation);
   const savings_yr1 = cashflows[0]?.savings_n || 0;
   const payback = simplePayback ?? (savings_yr1 > 0 ? netCapex / savings_yr1 : Infinity);
   
- const npv = yearsOfNPV(
-  cashflows,
-  netCapex
-);
+  const npv = yearsOfNPV(
+    cashflows,
+    netCapex
+  );
 
   // ── IRR via Newton-Raphson with a bisection fallback ──────────────────
   // Newton-Raphson can diverge or oscillate when early cashflows are deeply

@@ -13,9 +13,6 @@ import { useState } from 'react';
 import { ResultRow } from '../../components/common/ResultRow';
 
 
-
-
-
 export function FinanceStep() {
   const { state, results, updateInput } = useAnalysis();
   const { inputs } = state;
