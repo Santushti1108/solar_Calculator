@@ -187,8 +187,8 @@ export function SolarSizingStep() {
           <KpiCard value={fmt(results.solar.panels)} unit="panels" label="Panel Count" tone="orange" />
           <KpiCard value={fmt(results.solar.inverter_kw, 1)} unit="kW" label="Inverter Size" tone="green" />
           <KpiCard value={fmt(results.solar.yearly_bess_charging_days, 1)}unit="days"label="Yearly BESS Charging"/>
-          <KpiCard value={fmt(results.solar.annual_net_meter_energy, 1)}unit="kWh/yr"label="Annual Net Meter Energy"/>
-          {onGrid &&(<KpiCard value={fmt(results.solar.export_revenue_yr1, 1)}unit="Rs./yr"label="export revenue (year 1)" tone = "green"/>)}
+          <KpiCard value={fmt(results.solar.annual_net_meter_energy, 1)}unit="kWh/yr"label="Annual Net Meter solar Energy after BESS charging"/>
+          {onGrid &&(<KpiCard value={fmt(results.solar.export_revenue_yr1, 1)}unit="Rs./yr"label="export revenue for 1st year" tone = "green"/>)}
           {/* <KpiCard value={fmt(results.solar.annual_gen / 1000, 1)} unit="MWh/yr" label="Annual Gen (Yr1)" tone="green" /> */}
         </div>
         {/* {results.solar.roof_req > inputs.roofArea ? (

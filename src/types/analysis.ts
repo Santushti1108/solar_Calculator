@@ -97,6 +97,22 @@ export interface Inputs {
   vollRate: number;
   evElectricityCost: number;
   fuelEscalation : number;
+  outageEventsPerYear: number;
+  outageHoursPerEvent: number;
+  predictiveMaintenanceHours: number;
+  dieselConsumptionRate: number;
+  dgCapacityMultiplier: number;
+  dieselCapacityBump: number;
+  dgAnnualMaintenance: number;
+  evDailyDistance: number;
+  petrolMileage: number;
+  petrolPrice: number;
+  evConsumptionKwhKm: number;
+  evOmPct: number;
+  batteryReplacementPct: number;
+  batteryReplacementYear: number;
+  inverterReplacementPct: number;
+  inverterReplacementYear: number;
   
 }
 

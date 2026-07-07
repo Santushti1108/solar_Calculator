@@ -90,21 +90,8 @@ function yearsOfIRR(
   };
 }
 
-function clampPct(value: number) {
-  return Math.min(Math.max(value, 0), 100);
-}
-
-function resolveAnnualOutageHours(state: AnalysisState, solar: SolarResult) {
-  const rte = state.inputs.rte / 100;
-  const solarChargingDays = solar.yearly_bess_charging_days;
-
-  if (solarChargingDays > 0 && rte > 0) {
-    const hoursPerDay = 24;
-    const solarBackupChargingFactor = 1.5;
-    return (solarChargingDays * hoursPerDay * rte) / solarBackupChargingFactor;
-  }
-
-  return Math.max(state.inputs.autonomyHours, state.inputs.backupHours, 0) * Math.max(state.inputs.occupancyDays, 0);
+function resolveAnnualOutageHours(state: AnalysisState, _solar: SolarResult) {
+  return Math.max(state.inputs.outageEventsPerYear ?? 0, 0) * Math.max(state.inputs.outageHoursPerEvent ?? 0, 0);
 }
 
 function yearsOfBenefits(
@@ -144,7 +131,7 @@ export function computeLoad(state: AnalysisState): LoadResult {
 
   if (state.loadMethod === 'auto') {
     daily = inputs.area * inputs.eui;
-    average = daily / 24;
+    average = daily / 24; 
     peak = average;
   } else if (state.loadMethod === 'appliance') {
     const critical = state.appliances.filter((item) => item.priority === 'critical');
@@ -168,6 +155,15 @@ export function computeLoad(state: AnalysisState): LoadResult {
     peak = inputs.directPeakKw;
   }
 
+
+  console.log("LOAD", {
+  daily_kwh: daily,
+  annual_kwh: daily * 365,
+  average_kw: average,
+  peak_kw: peak,
+  critical_daily_kwh: criticalDaily,
+  critical_peak_kw: criticalPeak,
+});
   return {
     daily_kwh: daily,
     peak_kw: peak,
@@ -182,8 +178,8 @@ export function computeLoad(state: AnalysisState): LoadResult {
 
 export function computeBess(state: AnalysisState, load = computeLoad(state)): BessResult {
   const { inputs } = state;
-  const dod = inputs.dod / 100 || 1;
-  const rte = inputs.rte / 100 || 1;
+  const dod = inputs.dod > 0 ? inputs.dod / 100 : 0.92;
+  const rte = inputs.rte > 0 ? inputs.rte / 100 : 0.8;
   const chemCycles = { LFP: 4000, NMC: 2000, 'Lead-Acid': 500 };
   const cycleLife = chemCycles[inputs.chemistry] || 4000;
   let selectedDailyLoad = load.daily_kwh;
@@ -198,11 +194,21 @@ export function computeBess(state: AnalysisState, load = computeLoad(state)): Be
       selectedPeakLoad = load.non_critical_peak_kw || load.peak_kw;
     }
   }
-
+console.log("bess",{
+  selectedDailyLoad,
+  dod,
+  rte,
+});
   const autonomyFraction = inputs.autonomyHours / 24;
-  const kwh = (selectedDailyLoad * autonomyFraction ) / (dod * rte);
+  const kwh = ((selectedDailyLoad * autonomyFraction ) / (dod * rte))*1.15;
   const kw = selectedPeakLoad * 1.2;
   const life_yrs = cycleLife / (365 * inputs.dailyCycles || 1);
+ 
+  console.log("BESS", {
+  kwh,
+  kw,
+  life_yrs,
+});
 
   return { kwh, kw, life_yrs, chem: inputs.chemistry, cost_kwh: inputs.bessCostKwh };
 
@@ -239,12 +245,12 @@ export function computeSolar(state: AnalysisState, load = computeLoad(state), be
   const annualSolarHourLoad = solarHourLoad * 365;
   const nonSolarHourLoad = Math.max(dailyConsumption - solarHourLoad, 0);
   const targetDailySolar = solarHourLoad + batteryChargingRequirement;
-  const kwp = Math.ceil((targetDailySolar / (24 * cuf || 1)) * 10) / 10;
+  const kwp = Math.ceil(targetDailySolar / (24 * cuf || 1));
   const panels = Math.ceil((kwp * 1000) / (inputs.panelWp ||1));
   const roofReq = panels * inputs.panelArea;
   // const annualGen = kwp * 24 * cuf * 365;
   // const monthlyGenMwh = MONTHLY_FACTORS.map((factor) => Number(((annualGen / 12 / 1000) * factor).toFixed(2)));
-  const inverterKw = Math.ceil(load.peak_kw * 1.5 * 10) / 10;
+  const inverterKw = Math.ceil(load.peak_kw * 1.5 );
   const rte = inputs.rte / 100;
   const yearlyBessCharging = ((yearlyOutageHours / rte) * 1.5) / 24;
   const annualgen = kwp * cuf * 24 * 365;
@@ -256,13 +262,13 @@ export function computeSolar(state: AnalysisState, load = computeLoad(state), be
       inputs.gridExportTariff :
       0;
 
-    console.log({
-  annualgen,
-  annualLoad,
-  bessSize: bess.kwh,
-  yearlyBessCharging,
+    console.log("SOLAR", {
+  kwp,
+  annualGen: annualgen,
+  annualSolarHourLoad,
   batteryChargingEnergy: bess.kwh * yearlyBessCharging,
   annualNetMeterEnergy,
+  exportRevenueYr1,
 });
 
   return {
@@ -358,6 +364,7 @@ export function computeCapex(state: AnalysisState, solar = computeSolar(state), 
     emi_after_subsidy: emiAfterSubsidy,
     emi_without_subsidy: emiWithoutSubsidy,
   };
+  
 }
 
 // export function computeFinance(
@@ -536,15 +543,13 @@ export function computeFinance(
   const tariffEsc = inputs.tariffEscalation / 100;
   const discountRate = inputs.discountRate / 100;
   const life = inputs.projectLife || 25;
-  const selfCon = cap.canExport ? clampPct(inputs.selfConsumption) / 100 : 1;
-  const inflation = inputs.inflation / 100;
+  const omEsc = inputs.omEscalationRate / 100;
+  const fuelEsc = inputs.fuelEscalation / 100;
   const omPct = capex.om_pct / 100;
-  const insPct = capex.ins_pct / 100;
-  const initialBatteryCost = bess.kwh * inputs.bessCostKwh;
-  const batteryReplacementCost = initialBatteryCost * 0.6;
-  const batteryReplacementYear = Math.ceil(bess.life_yrs);
-  const inverterReplacementCost = capex.inverter_capex * 0.8;
-  const inverterReplacementYear = 11;
+  const batteryReplacementCost = capex.battery_capex * ((inputs.batteryReplacementPct ?? 80) / 100);
+  const batteryReplacementYear = inputs.batteryReplacementYear ?? 11;
+  const inverterReplacementCost = capex.inverter_capex * ((inputs.inverterReplacementPct ?? 80) / 100);
+  const inverterReplacementYear = inputs.inverterReplacementYear ?? 11;
 
   // ── TODO: replace with your real battery dispatch/cycling model ──────
   // Placeholder: assumes the battery runs ~1 full usable cycle/day for
@@ -558,10 +563,22 @@ export function computeFinance(
 
   const load = computeLoad(state);
   const annualOutageHours = resolveAnnualOutageHours(state, solar);
-  const backupLoad = load.critical_peak_kw > 0 ? load.critical_peak_kw : load.peak_kw;
-  const backupEnergy = backupLoad * annualOutageHours;
+  const gensetCapacity = Math.ceil((load.peak_kw || load.average_kw) * (inputs.dgCapacityMultiplier ?? 1.8));
+  const gensetRuntime = annualOutageHours + (inputs.predictiveMaintenanceHours ?? 0);
+  const gensetGeneration = gensetRuntime * gensetCapacity;
+  const dieselConsumption = gensetGeneration * (inputs.dieselConsumptionRate ?? 0) * (inputs.dieselCapacityBump ?? 1);
+  const dgSavingsYr1 = inputs.dieselPrice * dieselConsumption + (inputs.dgAnnualMaintenance ?? 0);
   const lostEnergy = load.average_kw * annualOutageHours;
-
+  const vollBenefitYr1 = lostEnergy * inputs.vollRate;
+  const gridSavingsYr1 = cap.hasSolar ? load.annual_kwh * inputs.gridImportTariff : 0;
+  const exportRevenueYr1 = cap.canExport ? Math.max(solar.annual_net_meter_energy, 0) * inputs.gridExportTariff : 0;
+  const evSavingsYr1 = cap.hasEV && inputs.evCostOption === "included"
+    ? ((inputs.petrolPrice / (inputs.petrolMileage || 1)) - ((inputs.evConsumptionKwhKm ?? 0) * inputs.evElectricityCost)) * (inputs.evDailyDistance ?? 0) * 365
+    : 0;
+  const evOmYr1 = cap.hasEV && inputs.evCostOption === "included"
+    ? (capex.ev_purchase_cost + capex.charging_infra) * ((inputs.evOmPct ?? 0) / 100)
+    : 0;
+  const omYr1 = capex.total_project_capex * omPct + evOmYr1;
 
   const cashflows = [];
   const years = [];
@@ -573,44 +590,36 @@ export function computeFinance(
   for (let n = 1; n <= life; n += 1) {
     const gen_n = cap.hasSolar ? solar.annual_gen * Math.pow(1 - solar.degrad, n - 1) : 0;
     const tariff_n = inputs.gridImportTariff * Math.pow(1 + tariffEsc, n - 1);
+    const tariffEscalationFactor = Math.pow(1 + tariffEsc, n - 1);
 
     // Grid Savings — solar self-consumption only. Correctly zero for Grid+BESS.
-    const grid_savings_n = cap.hasSolar ? gen_n * selfCon * tariff_n : 0;
+    const grid_savings_n = gridSavingsYr1 * tariffEscalationFactor;
 
     // Net Meter / Export Revenue — on-grid RTS only. Correctly zero for Grid+BESS.
-    const annualNetMeterEnergy = cap.hasSolar
-      ? Math.max(solar.annual_net_meter_energy * Math.pow(1 - solar.degrad, n - 1), 0)
-      : 0;
-    const export_revenue_n = cap.canExport ? annualNetMeterEnergy * inputs.gridExportTariff : 0;
+    const export_revenue_n = exportRevenueYr1 * tariffEscalationFactor;
 
+   
+console.log({
+  exportRevenueYr1,
+  export_revenue_n,
+  annualNetMeterEnergy: solar.annual_net_meter_energy,
+});
+console.log(inputs.tariffEscalation);
     // DG Cost Avoided — now driven by battery discharge, not solar generation.
     // This is the actual bug fix: previously gated on isOffGridMode(mode) AND
     // multiplied by gen_n, which zeroed out for Grid+BESS entirely.
-  const dgCost_n =
-  inputs.dgCost *
-  Math.pow(1 + inputs.fuelEscalation / 100, n - 1);
-
-  const dg_savings_n =
-  cap.hasBattery
-    ? backupEnergy * dgCost_n
-    : 0;
+    const dg_savings_n = cap.hasBattery ? dgSavingsYr1 * Math.pow(1 + fuelEsc, n - 1) : 0;
     // VoLL — backup availability, not solar. Already correct in original code;
     // left untouched, just now explicitly gated on cap.hasBattery.
-    const voll_benefits_n = cap.hasBattery
-  ? lostEnergy *
-    inputs.vollRate *
-    Math.pow(1 + inflation, n - 1)
-  : 0;
+    const voll_benefits_n = cap.hasBattery ? vollBenefitYr1 * tariffEscalationFactor : 0;
 
-    const ev_savings_n = cap.hasEV && inputs.evCostOption === "included"
-      ? inputs.evAnnualSavings * Math.pow(1 + inflation, n - 1)
-      : 0;
+    const ev_savings_n = evSavingsYr1 * tariffEscalationFactor;
 
     const savings_n = grid_savings_n + export_revenue_n + dg_savings_n + voll_benefits_n + ev_savings_n;
-    const om_n = capex.total_re_capex * omPct * Math.pow(1 + inflation, n - 1);
-    const ins_n = capex.total_re_capex * insPct * Math.pow(1 + inflation, n - 1);
-    const bess_capex_n = batteryReplacementYear > 0 && bess.kwh > 0 && n % batteryReplacementYear === 0 ? batteryReplacementCost : 0;
-    const inverter_capex_n = inverterReplacementYear > 0 && n % inverterReplacementYear === 0 ? inverterReplacementCost : 0;
+    const om_n = omYr1 * Math.pow(1 + omEsc, n - 1);
+    const ins_n = 0;
+    const bess_capex_n = batteryReplacementYear > 0 && bess.kwh > 0 && n === batteryReplacementYear ? batteryReplacementCost : 0;
+    const inverter_capex_n = inverterReplacementYear > 0 && n === inverterReplacementYear ? inverterReplacementCost : 0;
     const net_cf = savings_n - om_n - ins_n - bess_capex_n - inverter_capex_n;
     const disc_cf = net_cf / Math.pow(1 + discountRate, n);
 
@@ -625,26 +634,13 @@ export function computeFinance(
       grid_savings_n, export_revenue_n, dg_savings_n, voll_benefits_n, ev_savings_n,
     });
     years.push(n);
-
-    if (n === 1) {
-  console.table({
-    gridSavings: grid_savings_n,
-    exportRevenue: export_revenue_n,
-    dgSavings: dg_savings_n,
-    vollBenefit: voll_benefits_n,
-    evSavings: ev_savings_n,
-    totalSavings: savings_n,
-    om: om_n,
-    insurance: ins_n,
-    batteryReplacement: bess_capex_n,
-    inverterReplacement: inverter_capex_n,
-    netCashFlow: net_cf,
-  });
-}
   }
+
+  
 
   const savings_yr1 = cashflows[0]?.savings_n || 0;
   const payback = simplePayback ?? (savings_yr1 > 0 ? netCapex / savings_yr1 : Infinity);
+  
  const npv = yearsOfNPV(
   cashflows,
   netCapex
@@ -668,6 +664,27 @@ export function computeFinance(
 
   const roi = (cashflows.reduce((sum, { net_cf }) => sum + net_cf, 0) / netCapex) * 100;
   const npvSavings = cashflows.reduce((sum, { savings_n }, i) => sum + savings_n / Math.pow(1 + discountRate, i + 1), 0);
+console.log({
+  annualGen: solar.annual_gen,
+  annualNetMeter: solar.annual_net_meter_energy,
+  gridSavings: cashflows[0].grid_savings_n,
+  exportRevenue: cashflows[0].export_revenue_n,
+  dgSavings: cashflows[0].dg_savings_n,
+  vollBenefit: cashflows[0].voll_benefits_n,
+  totalSavings: cashflows[0].savings_n,
+  netCashFlow: cashflows[0].net_cf,
+  netCapex,
+  npv,
+  irr,
+});
+
+console.log({
+  mode: inputs.systemMode,
+  hasSolar: cap.hasSolar,
+  canExport: cap.canExport,
+  annualNetMeterEnergy: solar.annual_net_meter_energy,
+  exportTariff: inputs.gridExportTariff,
+});
 
   return {
     savings_yr1,
@@ -688,6 +705,7 @@ export function computeFinance(
     years,
     net_capex: netCapex,
   };
+  
 }
 
 function computeIrrNewton(netCapex: number, cashflows: { net_cf: number }[]): number | null {

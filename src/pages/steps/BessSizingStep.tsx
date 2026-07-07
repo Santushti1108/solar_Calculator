@@ -21,9 +21,9 @@ export function BessSizingStep() {
       </div >
        <div className="alert alert-info mt-3">
       <strong>Battery Assumptions :</strong><br />
-        Depth of Discharge (DOD): 80%;
+        Depth of Discharge (DOD): 92%;
         <br />
-        Round Trip Efficiency (RTE): 92%;
+        Round Trip Efficiency (RTE): 80%;
       </div>
       </div>
       <Card title="Battery Parameters">
