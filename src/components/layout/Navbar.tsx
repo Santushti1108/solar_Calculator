@@ -1,5 +1,6 @@
 import { useAnalysis } from '../../context/AnalysisContext';
 
+
 export function Navbar() {
   const { goHome, state } = useAnalysis();
 

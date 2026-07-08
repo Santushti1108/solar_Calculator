@@ -11,7 +11,7 @@ const features = [
   },
   {
     icon: '⚡',
-    label: 'Financial analysis including NPV, IRR, ROI and Payback',
+    label: 'Financial analysis including NPV, IRR and Payback',
   },
   {
     icon: '🌱',
@@ -29,11 +29,11 @@ const stats = [
     value: '9-Step',
     label: 'Guided Wizard',
   },
-  {
-    icon: '📊',
-    value: '8 KPIs',
-    label: 'Financial Metrics',
-  },
+  // {
+  //   icon: '📊',
+  //   value: '8 KPIs',
+  //   label: 'Financial Metrics',
+  // },
   {
     icon: '⚡',
     value: '6 Modes',
