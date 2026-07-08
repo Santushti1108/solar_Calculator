@@ -1,7 +1,7 @@
 import { useAnalysis } from '../../context/AnalysisContext';
 
 export function Navbar() {
-  const { goHome } = useAnalysis();
+  const { goHome, state } = useAnalysis();
 
   return (
     <nav>
@@ -10,9 +10,11 @@ export function Navbar() {
         className="irade-logo"
         />
       </div>
-      <button className="nav-btn" type="button" onClick={goHome}>
-        Home
-      </button>
+      {state.showWizard && (
+        <button className="nav-btn" type="button" onClick={goHome}>
+          Home
+        </button>
+      )}
     </nav>
   );
 }
