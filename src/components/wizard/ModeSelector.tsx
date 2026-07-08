@@ -3,53 +3,99 @@ import { useAnalysis } from '../../context/AnalysisContext';
 import { isEvMode } from '../../utils/calculations';
 import { FormField } from '../common/FormField';
 
-const modes: Array<{ id: SystemMode;name: string; desc: string }> = [
-  { id: 'offgrid-rts-bess', name: 'Offgrid', desc: 'RTS + BESS' },
-  { id: 'ongrid-rts-bess',  name: 'Ongrid', desc: 'RTS + BESS' },
-  { id: 'offgrid-rts-bess-ev',  name: 'Offgrid', desc: 'RTS + BESS + EV' },
-  { id: 'ongrid-rts-bess-ev', name: 'Ongrid', desc: 'RTS + BESS + EV' },
-  { id: 'grid-bess',  name: 'Grid', desc: 'BESS' },
-  { id: 'grid-bess-ev',  name: 'Grid', desc: 'BESS + EV'},
+type SystemType = 'offgrid' | 'ongrid' | 'grid';
+type Configuration = 'rts-bess' | 'rts-bess-ev' | 'bess' | 'bess-ev';
+
+const systemTypeOptions = [
+  { value: 'offgrid', label: 'Offgrid' },
+  { value: 'ongrid', label: 'Ongrid' },
+  { value: 'grid', label: 'Grid' },
 ];
 
+const rtsConfigurationOptions = [
+  { value: 'rts-bess', label: 'RTS + BESS' },
+  { value: 'rts-bess-ev', label: 'RTS + BESS + EV' },
+];
+
+const gridConfigurationOptions = [
+  { value: 'bess', label: 'BESS' },
+  { value: 'bess-ev', label: 'BESS + EV' },
+];
+
+const evCostOptions = [
+  { value: 'included', label: 'Included' },
+  { value: 'excluded', label: 'Excluded' },
+];
+
+function getSystemType(mode: SystemMode): SystemType {
+  if (mode.startsWith('offgrid')) return 'offgrid';
+  if (mode.startsWith('ongrid')) return 'ongrid';
+  return 'grid';
+}
+
+function getConfiguration(mode: SystemMode): Configuration {
+  if (mode === 'grid-bess') return 'bess';
+  if (mode === 'grid-bess-ev') return 'bess-ev';
+  return isEvMode(mode) ? 'rts-bess-ev' : 'rts-bess';
+}
+
+function resolveSystemMode(systemType: SystemType, configuration: Configuration): SystemMode {
+  if (systemType === 'grid') {
+    return configuration === 'bess-ev' ? 'grid-bess-ev' : 'grid-bess';
+  }
+
+  const hasEv = configuration === 'rts-bess-ev' || configuration === 'bess-ev';
+  if (systemType === 'offgrid') return hasEv ? 'offgrid-rts-bess-ev' : 'offgrid-rts-bess';
+  return hasEv ? 'ongrid-rts-bess-ev' : 'ongrid-rts-bess';
+}
 
 export function ModeSelector() {
-  const { state, setMode,updateInput } = useAnalysis();
+  const { state, setMode, updateInput } = useAnalysis();
   const { inputs } = state;
+  const systemType = getSystemType(inputs.systemMode);
+  const configuration = getConfiguration(inputs.systemMode);
+  const configurationOptions = systemType === 'grid' ? gridConfigurationOptions : rtsConfigurationOptions;
   const showEvOptions = isEvMode(inputs.systemMode);
 
+  const handleSystemTypeChange = (value: string | number | '') => {
+    const nextSystemType = value as SystemType;
+    const nextConfiguration = nextSystemType === 'grid'
+      ? (showEvOptions ? 'bess-ev' : 'bess')
+      : (showEvOptions ? 'rts-bess-ev' : 'rts-bess');
+    setMode(resolveSystemMode(nextSystemType, nextConfiguration));
+  };
 
+  const handleConfigurationChange = (value: string | number | '') => {
+    setMode(resolveSystemMode(systemType, value as Configuration));
+  };
 
   return (
-    <>
-    <div className="mode-grid">
-      {modes.map((mode) => (
-        <button className={`mode-card ${inputs.systemMode === mode.id ?"selected":""}`} type="button" key={mode.id} onClick={() => setMode(mode.id)}>
-          {/* <div className="mode-icon">{mode.icon}</div> */}
-          <div className="mode-name">{mode.name}</div>
-          <div className="mode-desc">{mode.desc}</div>
-        </button>
-      ))}
+    <div className="form-grid">
+      <FormField
+        label="System Type"
+        value={systemType}
+        onChange={handleSystemTypeChange}
+        options={systemTypeOptions}
+      />
+      <FormField
+        label="Configuration"
+        value={configuration}
+        onChange={handleConfigurationChange}
+        options={configurationOptions}
+      />
+      {showEvOptions ? (
+        <FormField
+          label="EV Cost"
+          value={inputs.evCostOption}
+          onChange={(value) =>
+            updateInput(
+              'evCostOption',
+              value as 'included' | 'excluded'
+            )
+          }
+          options={evCostOptions}
+        />
+      ) : null}
     </div>
-
-    {showEvOptions && (
-        <div className="mt-4">
-          <FormField
-            label="EV Cost"
-            value={inputs.evCostOption}
-            onChange={(value) =>
-              updateInput(
-                "evCostOption",
-                value as "included" | "excluded"
-              )
-            }
-            options={[
-              { value: "included", label: "Included" },
-              { value: "excluded", label: "Excluded" },
-            ]}
-          />
-        </div>
-      )}
-    </>
   );
 }

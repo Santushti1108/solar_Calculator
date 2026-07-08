@@ -20,8 +20,8 @@ export function FinanceStep() {
   const onGrid = isOnGridMode(inputs.systemMode);
   const canExport = isRtsMode(inputs.systemMode) && onGrid;
   const showEv = isEvMode(inputs.systemMode) && inputs.evCostOption === 'included';
-  const [selectedYear, setSelectedYear] = useState<5 | 10 | 15 | 20 | 25>(5);
-  const years: Array<5 | 10 | 15 | 20 | 25> = [5, 10, 15, 20, 25];
+  const [selectedYear, setSelectedYear] = useState< 10 | 15 | 20 | 25>(10);
+  const years: Array<10 | 15 | 20 | 25> = [10, 15, 20, 25];
 
   return (
     <div className="step-panel visible">

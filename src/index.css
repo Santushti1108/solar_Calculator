@@ -832,30 +832,53 @@ section {
 .compare-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 1fr;
   gap: 14px;
+  align-items: stretch;
 }
 
 .compare-col {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .compare-col.best {
-  border-color: var(--green);
+  border-color: var(--orange);
+  box-shadow: 0 0 0 1px rgba(200, 90, 0, 0.28);
 }
 
 .compare-col .col-title {
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 12px;
-  text-align: center;
   color: var(--text-primary);
+  min-height: 44px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .compare-col .best-lbl {
-  color: var(--green);
+  color: var(--orange);
+}
+
+.best-badge {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(200, 90, 0, 0.12);
+  border: 1px solid rgba(200, 90, 0, 0.28);
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .env-grid {
@@ -1142,6 +1165,10 @@ section {
   .hero-stats {
     grid-template-columns: repeat(2, 1fr);
     gap: 20px;
+  }
+
+  .compare-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

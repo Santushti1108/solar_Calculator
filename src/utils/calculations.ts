@@ -21,9 +21,9 @@ const emptyFinance: FinanceResult = {
   dg_savings_yr1: 0,
   voll_benefits_yr1: 0,
   ev_savings_yr1: 0,
-  benefits: { 5: 0, 10: 0, 15: 0, 20: 0, 25: 0 },
-  npv: { 5: 0, 10: 0, 15: 0, 20: 0, 25: 0 },
-  irr: { 5: 0, 10: 0, 15: 0, 20: 0, 25: 0 },
+  benefits: {10: 0, 15: 0, 20: 0, 25: 0 },
+  npv: { 10: 0, 15: 0, 20: 0, 25: 0 },
+  irr: { 10: 0, 15: 0, 20: 0, 25: 0 },
   payback: 0,
   disc_payback: 0,
   lcoe: 0,
@@ -58,8 +58,6 @@ function yearsOfNPV(
     cashflows
       .slice(0, years)
       .reduce((sum, cf) => sum + cf.disc_cf, 0) - netCapex;
-  
-  const calc1 = (yr: number) => netCapex - cashflows.slice(0, yr).reduce((sum, cf) => sum + cf.disc_cf, 0);
 
   // return {
   //   5: calc(5),
@@ -70,11 +68,11 @@ function yearsOfNPV(
   // };
 
   return {
-    5: calc1(5),
-    10: calc1(10),
-    15: calc1(15),
-    20: calc1(20),
-    25: calc1(25),
+    5: calc(5),
+    10: calc(10),
+    15: calc(15),
+    20: calc(20),
+    25: calc(25),
   };
 }
 
@@ -110,6 +108,7 @@ function yearsOfBenefits(
     export_revenue_n: number;
     dg_savings_n: number;
     voll_benefits_n: number;
+    ev_savings_n: number;
     
   }>
 ): Record<5 | 10 | 15 | 20 | 25, number> {
@@ -117,7 +116,8 @@ function yearsOfBenefits(
     cf.grid_savings_n +
     cf.export_revenue_n +
     cf.dg_savings_n +
-    cf.voll_benefits_n 
+    cf.voll_benefits_n +
+    cf.ev_savings_n
    
 
   return {
@@ -547,18 +547,16 @@ export function computeFinance(
   const { inputs } = state;
   const netCapex = capex.net;
   if (!netCapex) return emptyFinance;
-  
-  console.log(capex);
-  console.log(capex.net)
-
   const cap = resolveCapabilities(inputs.systemMode);
 
   const tariffEsc = inputs.tariffEscalation / 100;
   const discountRate = inputs.discountRate / 100;
-  const life = inputs.projectLife || 25;
+  const life = Math.max(inputs.projectLife || 25, 25);
   const omEsc = inputs.omEscalationRate / 100;
   const fuelEsc = inputs.fuelEscalation / 100;
+  const inflation = inputs.inflation / 100;
   const omPct = capex.om_pct / 100;
+  const insPct = capex.ins_pct / 100;
   const batteryReplacementCost = capex.battery_capex * ((inputs.batteryReplacementPct ?? 80) / 100);
   const batteryReplacementYear = inputs.batteryReplacementYear ?? 11;
   const inverterReplacementCost = capex.inverter_capex * ((inputs.inverterReplacementPct ?? 80) / 100);
@@ -583,8 +581,6 @@ export function computeFinance(
   const dgSavingsYr1 = inputs.dieselPrice * dieselConsumption + (inputs.dgAnnualMaintenance ?? 0);
   const lostEnergy = load.average_kw * annualOutageHours;
   const vollBenefitYr1 = lostEnergy * inputs.vollRate;
-  const gridSavingsYr1 = cap.hasSolar ? load.annual_kwh * inputs.gridImportTariff : 0;
-  const exportRevenueYr1 = cap.canExport ? Math.max(solar.annual_net_meter_energy, 0) * inputs.gridExportTariff : 0;
   const evSavingsYr1 = cap.hasEV && inputs.evCostOption === "included"
     ? ((inputs.petrolPrice / (inputs.petrolMileage || 1)) - ((inputs.evConsumptionKwhKm ?? 0) * inputs.evElectricityCost)) * (inputs.evDailyDistance ?? 0) * 365
     : 0;
@@ -592,6 +588,9 @@ export function computeFinance(
     ? (capex.ev_purchase_cost + capex.charging_infra) * ((inputs.evOmPct ?? 0) / 100)
     : 0;
   const omYr1 = capex.total_project_capex * omPct + evOmYr1;
+  const insYr1 = capex.total_project_capex * insPct;
+  const annualSolarHourLoad = solar.solar_hour_load * 365;
+  const annualBessChargingEnergy = bess.kwh * solar.yearly_bess_charging_days;
 
   const cashflows = [];
   const years = [];
@@ -603,34 +602,30 @@ export function computeFinance(
   for (let n = 1; n <= life; n += 1) {
     const gen_n = cap.hasSolar ? solar.annual_gen * Math.pow(1 - solar.degrad, n - 1) : 0;
     const tariff_n = inputs.gridImportTariff * Math.pow(1 + tariffEsc, n - 1);
-    const tariffEscalationFactor = Math.pow(1 + tariffEsc, n - 1);
+    const export_tariff_n = inputs.gridExportTariff * Math.pow(1 + tariffEsc, n - 1);
+    const inflationFactor = Math.pow(1 + inflation, n - 1);
 
     // Grid Savings — solar self-consumption only. Correctly zero for Grid+BESS.
-    const grid_savings_n = gridSavingsYr1 * tariffEscalationFactor;
+    const annual_net_meter_energy_n = cap.canExport ? Math.max(gen_n - annualBessChargingEnergy - annualSolarHourLoad, 0) : 0;
+    const self_consumed_energy_n = cap.hasSolar ? Math.max(gen_n - annual_net_meter_energy_n, 0) : 0;
+    const grid_savings_n = self_consumed_energy_n * tariff_n;
 
     // Net Meter / Export Revenue — on-grid RTS only. Correctly zero for Grid+BESS.
-    const export_revenue_n = exportRevenueYr1 * tariffEscalationFactor;
+    const export_revenue_n = cap.canExport ? annual_net_meter_energy_n * export_tariff_n : 0;
 
-   
-console.log({
-  exportRevenueYr1,
-  export_revenue_n,
-  annualNetMeterEnergy: solar.annual_net_meter_energy,
-});
-console.log(inputs.tariffEscalation);
     // DG Cost Avoided — now driven by battery discharge, not solar generation.
     // This is the actual bug fix: previously gated on isOffGridMode(mode) AND
     // multiplied by gen_n, which zeroed out for Grid+BESS entirely.
     const dg_savings_n = cap.hasBattery ? dgSavingsYr1 * Math.pow(1 + fuelEsc, n - 1) : 0;
     // VoLL — backup availability, not solar. Already correct in original code;
     // left untouched, just now explicitly gated on cap.hasBattery.
-    const voll_benefits_n = cap.hasBattery ? vollBenefitYr1 * tariffEscalationFactor : 0;
+    const voll_benefits_n = cap.hasBattery ? vollBenefitYr1 * inflationFactor : 0;
 
-    const ev_savings_n = evSavingsYr1 * tariffEscalationFactor;
+    const ev_savings_n = evSavingsYr1 * inflationFactor;
 
     const savings_n = grid_savings_n + export_revenue_n + dg_savings_n + voll_benefits_n + ev_savings_n;
     const om_n = omYr1 * Math.pow(1 + omEsc, n - 1);
-    const ins_n = 0;
+    const ins_n = insYr1 * inflationFactor;
     const bess_capex_n = batteryReplacementYear > 0 && bess.kwh > 0 && n === batteryReplacementYear ? batteryReplacementCost : 0;
     const inverter_capex_n = inverterReplacementYear > 0 && n === inverterReplacementYear ? inverterReplacementCost : 0;
     const net_cf = savings_n - om_n - ins_n - bess_capex_n - inverter_capex_n;
@@ -677,28 +672,17 @@ console.log(inputs.tariffEscalation);
 
   const roi = (cashflows.reduce((sum, { net_cf }) => sum + net_cf, 0) / netCapex) * 100;
   const npvSavings = cashflows.reduce((sum, { savings_n }, i) => sum + savings_n / Math.pow(1 + discountRate, i + 1), 0);
-console.log({
-  annualGen: solar.annual_gen,
-  annualNetMeter: solar.annual_net_meter_energy,
+
+  console.log({
+  mode: inputs.systemMode,
   gridSavings: cashflows[0].grid_savings_n,
   exportRevenue: cashflows[0].export_revenue_n,
   dgSavings: cashflows[0].dg_savings_n,
   vollBenefit: cashflows[0].voll_benefits_n,
+  evSavings: cashflows[0].ev_savings_n,
   totalSavings: cashflows[0].savings_n,
   netCashFlow: cashflows[0].net_cf,
-  netCapex,
-  npv,
-  irr,
 });
-
-console.log({
-  mode: inputs.systemMode,
-  hasSolar: cap.hasSolar,
-  canExport: cap.canExport,
-  annualNetMeterEnergy: solar.annual_net_meter_energy,
-  exportTariff: inputs.gridExportTariff,
-});
-
   return {
     savings_yr1,
     grid_savings_yr1: cashflows[0]?.grid_savings_n || 0,
@@ -772,30 +756,68 @@ export function computeEnv(state: AnalysisState, solar = computeSolar(state)): E
   return { co2_yr1, co2_total, trees: co2_total * 45, gen_yr1: solar.annual_gen, cumulativeCo2 };
 }
 
-export function computeScenarios(state: AnalysisState, solar: SolarResult, bess: BessResult, capex: CapexResult): { scenarios: Scenario[]; bestScenarioIndex: number } {
-  const { inputs } = state;
-  const life = inputs.projectLife || 25;
-  const degrad = solar.degrad || 0.005;
+type FinanceHorizon = 10 | 15 | 20 | 25;
 
-  function scenNPV(name: string, selfCon: number, exportPct: number, exportRate: number, capexMultiplier: number) {
-    const netCapex = capex.net * capexMultiplier;
-    let disc = 0;
-    for (let n = 1; n <= life; n += 1) {
-      const generation = solar.annual_gen * Math.pow(1 - degrad, n - 1);
-      const tariff = inputs.tariff * Math.pow(1 + inputs.tariffEscalation / 100, n - 1);
-      disc += (generation * (selfCon * tariff + exportPct * exportRate)) / Math.pow(1 + inputs.discountRate / 100, n);
-    }
-    return { name, npv: disc - netCapex, pb: netCapex / (solar.annual_gen * selfCon * inputs.tariff || 1), netCapex };
-  }
+const financeHorizons: FinanceHorizon[] = [ 10, 15, 20, 25];
 
-  const selected = scenNPV('Selected', isOnGridMode(inputs.systemMode) ? 0.8 : 1, isOnGridMode(inputs.systemMode) ? 0.2 : 0, inputs.gridExportTariff, 1);
-  const gridBess = scenNPV('Grid + BESS', 0.7, 0, 0, 0.9);
-  const rtsBess = scenNPV('RTS + BESS', 1, 0, 0, 1.1);
-  const scenarios = [
-    { name: selected.name, icon: '*', npv: selected.npv, pb: selected.pb, capex: selected.netCapex, color: COLORS.blue, self: isOnGridMode(inputs.systemMode) ? '80%' : '100%', bess: bess.kwh > 0 ? `${fmt(bess.kwh, 1)} kWh` : '-' },
-    { name: gridBess.name, icon: '*', npv: gridBess.npv, pb: gridBess.pb, capex: gridBess.netCapex, color: COLORS.orange, self: '70%', bess: bess.kwh > 0 ? `${fmt(bess.kwh, 1)} kWh` : '-' },
-    { name: rtsBess.name, icon: '*', npv: rtsBess.npv, pb: rtsBess.pb, capex: rtsBess.netCapex, color: COLORS.green, self: '100%', bess: bess.kwh > 0 ? `${fmt(bess.kwh, 1)} kWh` : '-' },
+function resolveFinanceHorizon(projectLife: number): FinanceHorizon {
+  return financeHorizons.includes(projectLife as FinanceHorizon) ? projectLife as FinanceHorizon : 25;
+}
+
+function cloneStateWithMode(state: AnalysisState, systemMode: SystemMode): AnalysisState {
+  return {
+    ...state,
+    inputs: {
+      ...state.inputs,
+      systemMode,
+    },
+  };
+}
+
+function formatSelfConsumption(state: AnalysisState, solar: SolarResult) {
+  if (solar.annual_gen <= 0) return '-';
+
+  const canExport = isRtsMode(state.inputs.systemMode) && isOnGridMode(state.inputs.systemMode);
+  const netMeterEnergy = canExport ? Math.max(solar.annual_net_meter_energy, 0) : 0;
+  const selfConsumedEnergy = Math.max(solar.annual_gen - netMeterEnergy, 0);
+  const selfConsumptionPct = Math.min((selfConsumedEnergy / solar.annual_gen) * 100, 100);
+  return `${fmt(selfConsumptionPct, 0)}%`;
+}
+
+function computeScenarioCard(state: AnalysisState, name: string, icon: string, color: string): Scenario {
+  const load = computeLoad(state);
+  const bess = computeBess(state, load);
+  const solar = computeSolar(state, load, bess);
+  const capex = computeCapex(state, solar, bess);
+  const finance = computeFinance(state, solar, bess, capex);
+  const horizon = resolveFinanceHorizon(state.inputs.projectLife || 25);
+
+  return {
+    name,
+    icon,
+    npv: finance.npv[horizon],
+    irr: finance.irr[horizon],
+    pb: finance.payback,
+    capex: capex.net,
+    benefit: finance.benefits[horizon],
+    color,
+    self: formatSelfConsumption(state, solar),
+    bess: bess.kwh > 0 ? `${fmt(bess.kwh, 1)} kWh` : '-',
+  };
+}
+
+export function computeScenarios(state: AnalysisState, _solar: SolarResult, _bess: BessResult, _capex: CapexResult): { scenarios: Scenario[]; bestScenarioIndex: number } {
+  const scenarioDefinitions: Array<{ mode: SystemMode; name: string; color: string }> = [
+    { mode: 'offgrid-rts-bess', name: 'Offgrid RTS + BESS', color: COLORS.blue },
+    { mode: 'ongrid-rts-bess', name: 'Ongrid RTS + BESS', color: COLORS.orange },
+    { mode: 'offgrid-rts-bess-ev', name: 'Offgrid RTS + BESS + EV', color: COLORS.green },
+    { mode: 'ongrid-rts-bess-ev', name: 'Ongrid RTS + BESS + EV', color: COLORS.purple },
+    { mode: 'grid-bess', name: 'Grid + BESS', color: COLORS.teal },
+    { mode: 'grid-bess-ev', name: 'Grid + BESS + EV', color: COLORS.yellow },
   ];
+  const scenarios = scenarioDefinitions.map(({ mode, name, color }) =>
+    computeScenarioCard(cloneStateWithMode(state, mode), name, '', color)
+  );
   const bestScenarioIndex = scenarios.reduce((best, scenario, index) => (scenario.npv > scenarios[best].npv ? index : best), 0);
   return { scenarios, bestScenarioIndex };
 }

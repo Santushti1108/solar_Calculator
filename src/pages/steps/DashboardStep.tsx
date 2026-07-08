@@ -29,7 +29,7 @@ export function DashboardStep() {
         <KpiCard value={`${fmt(results.fin.irr[25], 1)}%`} label="IRR" />
         <KpiCard value={fmt(results.env.co2_total, 0)} unit="tonnes" label="CO₂ Offset" tone="green" />
         <KpiCard value={results.fin.lcoe === null ? '-' : fmt(results.fin.lcoe, 2)} unit="₹/kWh" label="LCOE" />
-        <KpiCard value={`${fmt(results.fin.roi, 0)}%`} label="ROI (25yr)" tone="orange" />
+        {/* <KpiCard value={`${fmt(results.fin.roi, 0)}%`} label="ROI (25yr)" tone="orange" /> */}
         {hasRts ? <KpiCard value={fmt(results.solar.annual_gen / 1000, 1)} unit="MWh/yr" label="Year-1 Gen" /> : null}
       </div>
       <Card title="⚡ Generation & Savings Forecast">
@@ -55,7 +55,7 @@ export function DashboardStep() {
           />
         </div>
       </Card>
-      <Card title="📋 25-Year Cash Flow Table (first 10 years)">
+      {/* <Card title="📋 25-Year Cash Flow Table (first 10 years)">
         <div className="table-scroll">
           <table className="data-table">
             <thead>
@@ -86,7 +86,7 @@ export function DashboardStep() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </Card> */}
       <Card title="📤 Export Report">
         <div className="export-row">
           <button className="exp-btn" type="button" onClick={() => exportCashflowCsv(results)}>

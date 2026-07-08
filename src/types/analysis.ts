@@ -220,9 +220,9 @@ export interface FinanceResult {
   cashflows: Cashflow[];
   years: number[];
   net_capex: number;
-  benefits: Record<5 | 10 | 15 | 20 | 25, number>;
-  npv: Record<5 | 10 | 15 | 20 | 25, number>;
-  irr: Record<5 | 10 | 15 | 20 | 25, number>;
+  benefits: Record<10 | 15 | 20 | 25, number>;
+  npv: Record<10 | 15 | 20 | 25, number>;
+  irr: Record<10 | 15 | 20 | 25, number>;
   payback: number;
   
 }
@@ -239,8 +239,10 @@ export interface Scenario {
   name: string;
   icon: string;
   npv: number;
+  irr: number;
   pb: number;
   capex: number;
+  benefit: number;
   color: string;
   self: string;
   bess: string;
