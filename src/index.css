@@ -1423,3 +1423,41 @@ section {
     }
 
 }
+@media print {
+
+  nav,
+  #steps-bar,
+  .wiz-nav,
+  .export-row {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .step-panel {
+    padding: 0;
+    margin: 0;
+    width: 100%;
+  }
+
+}
+
+@media print {
+
+  .no-print {
+    display: none !important;
+  }
+
+}
+
+@media print {
+
+  nav,
+  #steps-bar,
+  .wiz-nav {
+    display: none !important;
+  }
+
+}

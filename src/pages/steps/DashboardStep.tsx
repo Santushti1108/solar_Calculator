@@ -6,14 +6,62 @@ import { COLORS } from '../../utils/constants';
 import { exportCashflowCsv } from '../../utils/export';
 import { isRtsMode } from '../../utils/calculations';
 import { fmt, fmtC } from '../../utils/format';
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 export function DashboardStep() {
   const { state, results } = useAnalysis();
   const cfs = results.fin.cashflows;
   const hasRts = isRtsMode(state.inputs.systemMode);
 
+
+  const exportPdf = async () => {
+  const report = document.getElementById("report-content");
+
+  if (!report) return;
+
+  const canvas = await html2canvas(report, {
+    scale: 3,
+    useCORS: true,
+    backgroundColor: "#ffffff",
+    allowTaint: true,
+    removeContainer: true,
+    logging: false,
+    imageTimeout: 0,
+    scrollX: 0,
+    scrollY: -window.scrollY,
+  });
+
+  const imgData = canvas.toDataURL("image/png");
+
+  const pdf = new jsPDF("p", "mm", "a4");
+
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+
+  heightLeft -= pageHeight;
+
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+
+  pdf.save("IRADe_Report.pdf");
+};
+
   return (
     <div className="step-panel visible">
+      <div id="report-content">
       <div className="panel-title">
         Final Report / Summary <span>Step 9</span>
       </div>
@@ -55,6 +103,7 @@ export function DashboardStep() {
           />
         </div>
       </Card>
+      </div>
       {/* <Card title="📋 25-Year Cash Flow Table (first 10 years)">
         <div className="table-scroll">
           <table className="data-table">
@@ -89,15 +138,16 @@ export function DashboardStep() {
       </Card> */}
       <Card title="📤 Export Report">
         <div className="export-row">
-          <button className="exp-btn" type="button" onClick={() => exportCashflowCsv(results)}>
-            ⬇ Export CSV
-          </button>
+          
           <button className="exp-btn" type="button" onClick={() => window.print()}>
             🖨 Print Report
           </button>
-          <button className="exp-btn" type="button" onClick={() => window.alert('PDF export requires server-side rendering. CSV export available.')}>
+          <button className="exp-btn" type="button" onClick={exportPdf}>
             📄 Export PDF
           </button>
+          {/* <button className="exp-btn" type="button" onClick={() => exportCashflowCsv(results)}>
+            ⬇ Export CSV
+          </button> */}
         </div>
       </Card>
     </div>
