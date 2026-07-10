@@ -82,7 +82,7 @@ export const initialState: AnalysisState = {
   ],
   inputs: {
     projectName: 'My Solar Project',
-    location: '',
+    locationName: '',
     latitude: 28.6139,
     longitude: 77.2090,
     psh: 5.5,
