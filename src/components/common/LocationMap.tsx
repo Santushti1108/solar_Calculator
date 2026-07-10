@@ -34,6 +34,7 @@ interface LocationMapProps {
     lat: number,
     lon: number
   ) => void;
+  locationName: string ,
 }
 
 function MapClickHandler({
