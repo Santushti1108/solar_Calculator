@@ -9,7 +9,7 @@ import { fmt, fmtC } from '../../utils/format';
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { PDFDownloadLink } from "@react-pdf/renderer";
-import ReportDocument from "../../pdf/ReportDocument";
+// import ReportDocument from "../../pdf/ReportDocument";
 
 export function DashboardStep() {
   const { state, results } = useAnalysis();
@@ -144,7 +144,7 @@ export function DashboardStep() {
           <button className="exp-btn" type="button" onClick={() => window.print()}>
             🖨 Print Report
           </button>
-          <PDFDownloadLink
+          {/* <PDFDownloadLink
               document={
                   <ReportDocument
                       state={state}
@@ -166,7 +166,7 @@ export function DashboardStep() {
 
                     )}
 
-                  </PDFDownloadLink>
+                  </PDFDownloadLink> */}
           {/* <button className="exp-btn" type="button" onClick={() => exportCashflowCsv(results)}>
             ⬇ Export CSV
           </button> */}

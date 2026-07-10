@@ -1,5 +1,6 @@
 import { useState } from "react";
-import "./InfoDrawer.css";
+import  "../../App";
+
 
 interface InfoSection {
   heading: string;
