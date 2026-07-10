@@ -166,14 +166,14 @@ export function computeLoad(state: AnalysisState): LoadResult {
   }
 
 
-  console.log("LOAD", {
-  daily_kwh: daily,
-  annual_kwh: daily * 365,
-  average_kw: average,
-  peak_kw: peak,
-  critical_daily_kwh: criticalDaily,
-  critical_peak_kw: criticalPeak,
-});
+//   console.log("LOAD", {
+//   daily_kwh: daily,
+//   annual_kwh: daily * 365,
+//   average_kw: average,
+//   peak_kw: peak,
+//   critical_daily_kwh: criticalDaily,
+//   critical_peak_kw: criticalPeak,
+// });
   return {
     daily_kwh: daily,
     peak_kw: peak,
@@ -204,21 +204,21 @@ export function computeBess(state: AnalysisState, load = computeLoad(state)): Be
       selectedPeakLoad = load.non_critical_peak_kw || load.peak_kw;
     }
   }
-console.log("bess",{
-  selectedDailyLoad,
-  dod,
-  rte,
-});
+// console.log("bess",{
+//   selectedDailyLoad,
+//   dod,
+//   rte,
+// });
   const autonomyFraction = inputs.autonomyHours / 24;
   const kwh = ((selectedDailyLoad * autonomyFraction ) / (dod * rte))*1.15;
   const kw = selectedPeakLoad * 1.2;
   const life_yrs = cycleLife / (365 * inputs.dailyCycles || 1);
  
-  console.log("BESS", {
-  kwh,
-  kw,
-  life_yrs,
-});
+//   console.log("BESS", {
+//   kwh,
+//   kw,
+//   life_yrs,
+// });
 
   return { kwh, kw, life_yrs, chem: inputs.chemistry, cost_kwh: inputs.bessCostKwh };
 
@@ -272,14 +272,14 @@ export function computeSolar(state: AnalysisState, load = computeLoad(state), be
       inputs.gridExportTariff :
       0;
 
-    console.log("SOLAR", {
-  kwp,
-  annualGen: annualgen,
-  annualSolarHourLoad,
-  batteryChargingEnergy: bess.kwh * yearlyBessCharging,
-  annualNetMeterEnergy,
-  exportRevenueYr1,
-});
+//     console.log("SOLAR", {
+//   kwp,
+//   annualGen: annualgen,
+//   annualSolarHourLoad,
+//   batteryChargingEnergy: bess.kwh * yearlyBessCharging,
+//   annualNetMeterEnergy,
+//   exportRevenueYr1,
+// });
 
   return {
     kwp,
@@ -673,16 +673,16 @@ export function computeFinance(
   const roi = (cashflows.reduce((sum, { net_cf }) => sum + net_cf, 0) / netCapex) * 100;
   const npvSavings = cashflows.reduce((sum, { savings_n }, i) => sum + savings_n / Math.pow(1 + discountRate, i + 1), 0);
 
-  console.log({
-  mode: inputs.systemMode,
-  gridSavings: cashflows[0].grid_savings_n,
-  exportRevenue: cashflows[0].export_revenue_n,
-  dgSavings: cashflows[0].dg_savings_n,
-  vollBenefit: cashflows[0].voll_benefits_n,
-  evSavings: cashflows[0].ev_savings_n,
-  totalSavings: cashflows[0].savings_n,
-  netCashFlow: cashflows[0].net_cf,
-});
+//   console.log({
+//   mode: inputs.systemMode,
+//   gridSavings: cashflows[0].grid_savings_n,
+//   exportRevenue: cashflows[0].export_revenue_n,
+//   dgSavings: cashflows[0].dg_savings_n,
+//   vollBenefit: cashflows[0].voll_benefits_n,
+//   evSavings: cashflows[0].ev_savings_n,
+//   totalSavings: cashflows[0].savings_n,
+//   netCashFlow: cashflows[0].net_cf,
+// });
   return {
     savings_yr1,
     grid_savings_yr1: cashflows[0]?.grid_savings_n || 0,
