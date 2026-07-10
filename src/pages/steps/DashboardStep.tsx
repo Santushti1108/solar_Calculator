@@ -8,6 +8,8 @@ import { isRtsMode } from '../../utils/calculations';
 import { fmt, fmtC } from '../../utils/format';
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import ReportDocument from "../../pdf/ReportDocument";
 
 export function DashboardStep() {
   const { state, results } = useAnalysis();
@@ -142,9 +144,29 @@ export function DashboardStep() {
           <button className="exp-btn" type="button" onClick={() => window.print()}>
             🖨 Print Report
           </button>
-          <button className="exp-btn" type="button" onClick={exportPdf}>
-            📄 Export PDF
-          </button>
+          <PDFDownloadLink
+              document={
+                  <ReportDocument
+                      state={state}
+                      results={results}
+                  />
+              }
+              fileName="IRADe_Report.pdf"
+              >
+
+                    {({ loading }) => (
+
+                    <button
+                        className="exp-btn"
+                    >
+
+                    {loading ? "Generating..." : "📄 Export PDF"}
+
+                    </button>
+
+                    )}
+
+                  </PDFDownloadLink>
           {/* <button className="exp-btn" type="button" onClick={() => exportCashflowCsv(results)}>
             ⬇ Export CSV
           </button> */}

@@ -4,6 +4,7 @@ import { FormField } from '../../components/common/FormField';
 import { LocationMap } from '../../components/common/LocationMap';
 import { ModeSelector } from '../../components/wizard/ModeSelector';
 import { useAnalysis } from '../../context/AnalysisContext';
+import InfoDrawer from "../../components/common/InfoDrawer";
 
 export function ProjectSetupStep() {
   const { state, updateInput } = useAnalysis();

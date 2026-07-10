@@ -5,6 +5,8 @@ import { ApplianceEditor } from '../../components/wizard/ApplianceEditor';
 import { useAnalysis } from '../../context/AnalysisContext';
 import type { LoadMethod } from '../../types/analysis';
 import { fmt } from '../../utils/format';
+import InfoDrawer from "../../components/common/InfoDrawer";
+import { loadInfo } from "../../data/loadinfo";
 
 const methodLabels: Array<{ id: LoadMethod; label: string }> = [
   { id: 'auto', label: 'Area Based' },
@@ -18,9 +20,15 @@ export function LoadEstimationStep() {
 
   return (
     <div className="step-panel visible">
-      <div className="panel-title">
+      <div className="panel-title-row">
+    <div className="panel-title">
         Load Estimation <span>Step 2</span>
-      </div>
+    </div>
+      <InfoDrawer
+          title="Load Estimation Imformation"
+          sections={loadInfo}
+      />
+    </div>
       <Card title="Select a load input method">
         <div className="button-row">
           {methodLabels.map((method) => (

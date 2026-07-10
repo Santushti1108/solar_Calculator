@@ -5,8 +5,9 @@ import { KpiCard } from '../../components/common/KpiCard';
 import { useAnalysis } from '../../context/AnalysisContext';
 import { COLORS, MONTHS } from '../../utils/constants';
 import { isOnGridMode, isRtsMode } from '../../utils/calculations';
-
 import { fmt } from '../../utils/format';
+import InfoDrawer from "../../components/common/InfoDrawer";
+import { Solarinfo } from '../../data/Solarinfo';
 
 
 
@@ -31,10 +32,10 @@ export function SolarSizingStep() {
   if (!hasRts) {
     return (
     <div className="step-panel visible">
+       
       <div className="panel-title">
         Solar PV Sizing <span>Step 4</span>
       </div>
-
       <Card title=" Rooftop Solar (RTS) Not Available">
         <div className="alert alert-info">
           {/* <strong>Selected Mode:</strong> {inputs.systemMode} */}
@@ -51,9 +52,17 @@ export function SolarSizingStep() {
 
   return (
     <div className="step-panel visible">
+      <div className="panel-title-row">
       <div className="panel-title">
         Solar PV Sizing <span>Step 4</span>
       </div>
+       <InfoDrawer 
+            title="Solar Imformation"
+            sections={Solarinfo}
+        />
+
+      </div>
+
       <div className="panel-sub">
       <div className="alert alert-info">
           Total Daily Consumption:

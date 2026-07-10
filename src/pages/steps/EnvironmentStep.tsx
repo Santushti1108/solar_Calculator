@@ -4,6 +4,8 @@ import { useAnalysis } from '../../context/AnalysisContext';
 import { COLORS } from '../../utils/constants';
 import { fmt } from '../../utils/format';
 import { darkChartOptions } from './SolarSizingStep';
+import InfoDrawer from "../../components/common/InfoDrawer";
+import { envinfo } from '../../data/envinfo';
 
 export function EnvironmentStep() {
   const { state, results } = useAnalysis();
@@ -11,8 +13,14 @@ export function EnvironmentStep() {
 
   return (
     <div className="step-panel visible">
+      <div className="panel-title-row">
       <div className="panel-title">
         Environmental Impact <span>Step 7</span>
+      </div>
+          <InfoDrawer 
+            title= "Environment Imformation"
+            sections={envinfo}
+          />
       </div>
       <div className="panel-sub"></div>
       <Card title="🌿 Environmental Benefits">

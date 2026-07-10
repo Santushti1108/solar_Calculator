@@ -5,6 +5,10 @@ import { KpiCard } from '../../components/common/KpiCard';
 import { useAnalysis } from '../../context/AnalysisContext';
 import type { Inputs } from '../../types/analysis';
 import { fmt } from '../../utils/format';
+import { bessinfo } from "../../data/Bessinfo";
+import InfoDrawer from "../../components/common/InfoDrawer";
+
+
 
 export function BessSizingStep() {
   const { state, results, updateInput } = useAnalysis();
@@ -12,8 +16,14 @@ export function BessSizingStep() {
 
   return (
     <div className="step-panel visible">
+      <div className="panel-title-row">
       <div className="panel-title">
         BESS Sizing <span>Step 3</span>
+      </div>
+            <InfoDrawer
+                title="Bess Information"
+                sections={bessinfo}
+            />
       </div>
       <div className="panel-sub">
       <div className="alert alert-info">

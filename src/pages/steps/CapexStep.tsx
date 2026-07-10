@@ -5,6 +5,8 @@ import { ResultRow } from '../../components/common/ResultRow';
 import { useAnalysis } from '../../context/AnalysisContext';
 import { isEvMode, isRtsMode } from '../../utils/calculations';
 import { fmt, fmtC } from '../../utils/format';
+import InfoDrawer from "../../components/common/InfoDrawer";
+import { capexinfo } from '../../data/capexinfo';
 
 export function CapexStep() {
   const { state, results, updateInput } = useAnalysis();
@@ -25,8 +27,15 @@ export function CapexStep() {
 
   return (
     <div className="step-panel visible">
+      <div className="panel-title-row">
       <div className="panel-title">
         CAPEX Analysis <span>Step 5</span>
+        </div>
+        <InfoDrawer
+         title =" Capex Imformation"
+         sections = {capexinfo}
+         />
+      
       </div>
       <div className="panel-sub">
 

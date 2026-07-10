@@ -11,6 +11,8 @@ import { fmt } from '../../utils/format';
 import { darkChartOptions } from './SolarSizingStep';
 import { useState } from 'react';
 import { ResultRow } from '../../components/common/ResultRow';
+import InfoDrawer from "../../components/common/InfoDrawer";
+import { financeinfo } from '../../data/financeinfo';
 
 
 export function FinanceStep() {
@@ -25,8 +27,15 @@ export function FinanceStep() {
 
   return (
     <div className="step-panel visible">
+      <div className="panel-title-row">
       <div className="panel-title">
         Financial Analysis <span>Step 6</span>
+      </div>
+      <InfoDrawer 
+        title = "Finance imformation"
+        sections = {financeinfo}
+        />
+
       </div>
       <div className="panel-sub"></div>
       <Card title="Finance Assumptions">
