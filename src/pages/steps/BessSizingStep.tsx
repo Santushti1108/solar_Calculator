@@ -5,7 +5,7 @@ import { KpiCard } from '../../components/common/KpiCard';
 import { useAnalysis } from '../../context/AnalysisContext';
 import type { Inputs } from '../../types/analysis';
 import { fmt } from '../../utils/format';
-import { bessinfo } from "../../data/Bessinfo";
+import { Bessinfo } from "../../data/Bessinfo";
 import InfoDrawer from "../../components/common/InfoDrawer";
 
 
@@ -22,7 +22,7 @@ export function BessSizingStep() {
       </div>
             <InfoDrawer
                 title="Bess Information"
-                sections={bessinfo}
+                sections={Bessinfo}
             />
       </div>
       <div className="panel-sub">

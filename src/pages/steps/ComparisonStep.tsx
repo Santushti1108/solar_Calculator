@@ -4,7 +4,7 @@ import { ResultRow } from '../../components/common/ResultRow';
 import { useAnalysis } from '../../context/AnalysisContext';
 import { fmt, fmtC } from '../../utils/format';
 import { darkChartOptions } from './SolarSizingStep';
-import InfoDrawer from "../../components/common/InfoDrawer";
+// import InfoDrawer from "../../components/common/InfoDrawer";
 
 export function ComparisonStep() {
   const { state, results } = useAnalysis();
