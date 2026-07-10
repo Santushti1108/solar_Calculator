@@ -18,7 +18,7 @@ export interface Appliance {
 
 export interface Inputs {
   projectName: string;
-  location: string;
+  locationName: string;
   latitude: number;
   longitude: number;
   psh: number;
