@@ -170,7 +170,11 @@ export function ProjectSetupStep() {
             value={`${inputs.latitude}, ${inputs.longitude}`}
             onChange={(value) => {
               const coords = String(value).split(',');
-              if (coords.length === 2) void updateCoordinates(Number(coords[0].trim()), Number(coords[1].trim()));
+              const lat = Number(coords[0].trim());
+              const lon = Number(coords[1].trim());
+
+              if(!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+              if (coords.length === 2) void updateCoordinates(lat, lon);
             }}
             placeholder="28.6139, 77.2090"
           />
