@@ -19,12 +19,18 @@ interface AnalysisContextValue {
   updateAppliance: (index: number, patch: Partial<Appliance>) => void;
   addAppliance: () => void;
   removeAppliance: (index: number) => void;
+  envChartImage: string | null,
+  dashboardChartImage: string | null,
+  setEnvChartImage: (image: string | null) => void,
+  setDashboardChartImage: (image: string | null) => void
 }
 const AnalysisContext = createContext<AnalysisContextValue | null>(null);
 
 export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(initialState);
   const results = useAnalysisCalculations(state);
+  const [envChartImage, setEnvChartImage] = useState<string | null>(null);
+  const [dashboardChartImage, setDashboardChartImage] = useState<string | null>(null);
 
   const value = useMemo<AnalysisContextValue>(
     () => ({
@@ -78,6 +84,10 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
           ...current,
           appliances: current.appliances.filter((_, itemIndex) => itemIndex !== index),
         })),
+      envChartImage,
+      dashboardChartImage,
+      setDashboardChartImage,
+      setEnvChartImage
     }),
     [results, state],
   );
