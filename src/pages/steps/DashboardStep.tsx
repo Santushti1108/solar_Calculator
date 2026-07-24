@@ -1,62 +1,184 @@
-import { BarChart } from '../../components/charts/BarChart';
+import { BarChart, BarChartRef } from '../../components/charts/BarChart';
 import { Card } from '../../components/common/Card';
 import { KpiCard } from '../../components/common/KpiCard';
 import { useAnalysis } from '../../context/AnalysisContext';
 import { COLORS } from '../../utils/constants';
-import { isRtsMode } from '../../utils/calculations';
+import { isEvMode, isRtsMode } from '../../utils/calculations';
 import { fmt } from '../../utils/format';
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { generateReport } from '../../pdf_adi/generatePdf';
+import { SolarReportTypes } from '../../pdf_adi/types/report';
+import { SystemMode } from '../../types/analysis';
+import { useEffect, useRef } from 'react';
+import { Chart as ChartJs } from 'chart.js'
+import { printPreview } from '../../pdf_adi/printPreview';
+
+type SystemType = 'offgrid' | 'ongrid' | 'grid';
+type Configuration = 'rts-bess' | 'rts-bess-ev' | 'bess' | 'bess-ev';
+
+function setSystemType(mode: SystemMode): SystemType {
+  if (mode.startsWith('offgrid')) return 'offgrid';
+  if (mode.startsWith('ongrid')) return 'ongrid';
+  return 'grid';
+}
+
+function setConfigType(mode: SystemMode): Configuration {
+  if (mode === 'grid-bess') return 'bess';
+  if (mode === 'grid-bess-ev') return 'bess-ev';
+  return isEvMode(mode) ? 'rts-bess-ev' : 'rts-bess';
+}
 
 export function DashboardStep() {
-  const { state, results } = useAnalysis();
+  const { state, results, setDashboardChartImage, envChartImage, dashboardChartImage } = useAnalysis();
   const cfs = results.fin.cashflows;
   const hasRts = isRtsMode(state.inputs.systemMode);
+  const { inputs } = state;
 
+  const dashboardChartImageRef = useRef<BarChartRef>(null);
+  const systemType = setSystemType(inputs.systemMode);
+  const configType = setConfigType(inputs.systemMode);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const image = dashboardChartImageRef.current?.toBase64Image();
+      if (image) {
+        setDashboardChartImage(image);
+      }
+    });
 
-  const exportPdf = async () => {
-  const report = document.getElementById("report-content");
+    return () => cancelAnimationFrame(id);
+  }, [results]);
+  
+  const generatePreview = async () => {
+    const report: SolarReportTypes = {
+      project: {
+        location: "Kolkata",
+        lat: 0,
+        long: 0
+      },
+      capex: {
+        bessUnitCost: inputs.bessCostKwh,
+        externalFinancing: inputs.externalFinancing === 'yes' ? true : false,
+        includeGovernmentSubsidy: inputs.governmentSubsidy === 'yes' ? true : false,
+        inverterUnitCost: inputs.inverterCost,
+        solarPVUnitCost: inputs.panelCost,
+        loanInterestRate: inputs.interestRate,
+        loanPercent: inputs.loanPct,
+        loanTenure: inputs.tenure
+      },
+      outputs: {
+        annualSaving: fmt(results.fin.savings_yr1 / 100000, 2),
+        batterySize: results.bess.kwh > 0 ? fmt(results.bess.kwh, 1) : '-',
+        co2Offset: fmt(results.env.co2_total, 0),
+        firstYrGeneration: fmt(results.solar.annual_gen / 1000, 1),
+        irr: fmt(results.fin.irr[25], 1),
+        lcoe: results.fin.lcoe === null ? '-' : fmt(results.fin.lcoe, 2),
+        netCapex: fmt(results.capex.net / 100000, 1),
+        npv: fmt(results.fin.npv[25] / 100000, 1),
+        panelCount: fmt(results.solar.panels),
+        payback: fmt(results.fin.payback, 1),
+        solarSize: fmt(results.solar.kwp, 1)
+      },
+      system: {
+        configuration: configType,
+        systemType: systemType
+      },
+      charts: {
+        dashboardChartImage: dashboardChartImage,
+        envChartImage: envChartImage
+      }
+    }
 
-  if (!report) return;
-
-  const canvas = await html2canvas(report, {
-    scale: 3,
-    useCORS: true,
-    backgroundColor: "#ffffff",
-    allowTaint: true,
-    removeContainer: true,
-    logging: false,
-    imageTimeout: 0,
-    scrollX: 0,
-    scrollY: -window.scrollY,
-  });
-
-  const imgData = canvas.toDataURL("image/png");
-
-  const pdf = new jsPDF("p", "mm", "a4");
-
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  const imgWidth = pageWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  let heightLeft = imgHeight;
-  let position = 0;
-
-  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-
-  heightLeft -= pageHeight;
-
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    await printPreview(report);
   }
 
-  pdf.save("IRADe_Report.pdf");
-};
+  const generatePdf = async () => {
+    const report: SolarReportTypes = {
+      project: {
+        location: "Kolkata",
+        lat: 0,
+        long: 0
+      },
+      capex: {
+        bessUnitCost: inputs.bessCostKwh,
+        externalFinancing: inputs.externalFinancing === 'yes' ? true : false,
+        includeGovernmentSubsidy: inputs.governmentSubsidy === 'yes' ? true : false,
+        inverterUnitCost: inputs.inverterCost,
+        solarPVUnitCost: inputs.panelCost,
+        loanInterestRate: inputs.interestRate,
+        loanPercent: inputs.loanPct,
+        loanTenure: inputs.tenure
+      },
+      outputs: {
+        annualSaving: fmt(results.fin.savings_yr1 / 100000, 2),
+        batterySize: results.bess.kwh > 0 ? fmt(results.bess.kwh, 1) : '-',
+        co2Offset: fmt(results.env.co2_total, 0),
+        firstYrGeneration: fmt(results.solar.annual_gen / 1000, 1),
+        irr: fmt(results.fin.irr[25], 1),
+        lcoe: results.fin.lcoe === null ? '-' : fmt(results.fin.lcoe, 2),
+        netCapex: fmt(results.capex.net / 100000, 1),
+        npv: fmt(results.fin.npv[25] / 100000, 1),
+        panelCount: fmt(results.solar.panels),
+        payback: fmt(results.fin.payback, 1),
+        solarSize: fmt(results.solar.kwp, 1)
+      },
+      system: {
+        configuration: configType,
+        systemType: systemType
+      },
+      charts: {
+        dashboardChartImage: dashboardChartImage,
+        envChartImage: envChartImage
+      }
+
+    }
+
+    await generateReport(report);
+  }
+
+  const exportPdf = async () => {
+    const report = document.getElementById("report-content");
+
+    if (!report) return;
+
+    const canvas = await html2canvas(report, {
+      scale: 3,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      allowTaint: true,
+      removeContainer: true,
+      logging: false,
+      imageTimeout: 0,
+      scrollX: 0,
+      scrollY: -window.scrollY,
+    });
+
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    pdf.save("IRADe_Report.pdf");
+  };
 
   return (
     <div className="step-panel visible">
@@ -82,6 +204,7 @@ export function DashboardStep() {
       <Card title="⚡ Generation & Savings Forecast">
         <div className="chart-wrap tall">
           <BarChart
+            ref={dashboardChartImageRef}
             data={{
               labels: cfs.map((c) => `Yr ${c.n}`),
               datasets: [
@@ -138,10 +261,10 @@ export function DashboardStep() {
       <Card title="📤 Export Report">
         <div className="export-row">
           
-          <button className="exp-btn" type="button" onClick={() => window.print()}>
+          <button className="exp-btn" type="button" onClick={generatePreview}>
             🖨 Print Report
           </button>
-          <button className="exp-btn" type="button" onClick={exportPdf}>
+          <button className="exp-btn" type="button" onClick={generatePdf}>
             📄 Export PDF
           </button>
           {/* <button className="exp-btn" type="button" onClick={() => exportCashflowCsv(results)}>
