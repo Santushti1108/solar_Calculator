@@ -1,4 +1,4 @@
-import { LineChart } from '../../components/charts/LineChart';
+import { LineChart, LineChartRef } from '../../components/charts/LineChart';
 import { Card } from '../../components/common/Card';
 import { useAnalysis } from '../../context/AnalysisContext';
 import { COLORS } from '../../utils/constants';
@@ -6,10 +6,25 @@ import { fmt } from '../../utils/format';
 import { darkChartOptions } from './SolarSizingStep';
 import InfoDrawer from "../../components/common/InfoDrawer";
 import { envinfo } from '../../data/envinfo';
+import { animator, Chart as ChartJs } from 'chart.js'
+import { useEffect, useRef } from 'react';
 
 export function EnvironmentStep() {
-  const { state, results } = useAnalysis();
+  const { state, results, setEnvChartImage } = useAnalysis();
   const years = Array.from({ length: state.inputs.projectLife }, (_, index) => `Yr ${index + 1}`);
+  const envChartRef = useRef<LineChartRef>(null);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const image = envChartRef.current?.toBase64Image();
+      if (image) {
+        setEnvChartImage(image);
+      }
+    });
+
+    return () => cancelAnimationFrame(id);
+
+  }, [results, setEnvChartImage]);
 
   return (
     <div className="step-panel visible">
@@ -47,7 +62,11 @@ export function EnvironmentStep() {
               labels: years,
               datasets: [{ label: 'Cumulative CO₂ Offset (tonnes)', data: results.env.cumulativeCo2, borderColor: COLORS.green, backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.4, pointRadius: 0 }],
             }}
-            options={darkChartOptions(true)}
+            options={{
+              ...darkChartOptions(true),
+              animation: false,
+            }}
+            ref={envChartRef}
           />
         </div>
       </Card>
